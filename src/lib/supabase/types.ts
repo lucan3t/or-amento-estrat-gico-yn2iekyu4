@@ -15,7 +15,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      budget_entries: {
+        Row: {
+          committed: number
+          created_at: string
+          department: string
+          dotation: number
+          id: string
+          liquidated: number
+          paid: number
+          program: string
+          reserved: number
+          user_id: string
+        }
+        Insert: {
+          committed?: number
+          created_at?: string
+          department: string
+          dotation?: number
+          id?: string
+          liquidated?: number
+          paid?: number
+          program: string
+          reserved?: number
+          user_id: string
+        }
+        Update: {
+          committed?: number
+          created_at?: string
+          department?: string
+          dotation?: number
+          id?: string
+          liquidated?: number
+          paid?: number
+          program?: string
+          reserved?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

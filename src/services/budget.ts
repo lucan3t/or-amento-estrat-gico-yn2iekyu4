@@ -35,6 +35,23 @@ export const createBudgetEntry = async (
   return data
 }
 
+export const updateBudgetEntry = async (
+  id: string,
+  entry: Partial<Omit<BudgetEntry, 'id' | 'user_id' | 'created_at'>>,
+) => {
+  const { error } = await supabase
+    .from('budget_entries')
+    .update(entry)
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+export const deleteBudgetEntry = async (id: string) => {
+  const { error } = await supabase.from('budget_entries').delete().eq('id', id)
+  if (error) throw error
+}
+
 export const getBudgetEntries = async () => {
   const { data, error } = await supabase
     .from('budget_entries')
@@ -60,7 +77,7 @@ export const getAggregatedSummary = async () => {
   const summary = entries.reduce((acc, curr) => {
     acc.dotacao += curr.dotation
     acc.empenhado += curr.committed
-    acc.liquidado += curr.liquidated
+    acc.liquidated += curr.liquidated
     acc.pago += curr.paid
     acc.reservado += curr.reserved
     return acc
@@ -78,7 +95,6 @@ export const getDepartmentPerformanceData = async () => {
     { dotacao: number; empenhado: number; pago: number }
   >()
 
-  // Initialize all departments with 0 to ensure they appear even without entries
   DEPARTMENTS.forEach((d) => {
     deptMap.set(d.id, { dotacao: 0, empenhado: 0, pago: 0 })
   })
@@ -108,7 +124,7 @@ export const getDepartmentPerformanceData = async () => {
           values.dotacao > 0 ? (values.pago / values.dotacao) * 100 : 0,
       }
     })
-    .filter((d) => d.dotacao > 0 || d.empenhado > 0) // Filter out empty departments if desired, or keep to show empty state
+    .filter((d) => d.dotacao > 0 || d.empenhado > 0)
     .sort((a, b) => b.executionRate - a.executionRate)
 }
 
@@ -146,12 +162,11 @@ export const getProgramPerformanceData = async () => {
 
 export const getEvolutionChartData = async () => {
   const entries = await getBudgetEntries()
-  // Group by month of created_at
   const monthMap = new Map<string, { empenhado: number; pago: number }>()
 
   entries.forEach((entry) => {
     const date = new Date(entry.created_at)
-    const monthKey = date.toLocaleString('default', { month: 'short' }) // e.g., "Jan"
+    const monthKey = date.toLocaleString('default', { month: 'short' })
     const current = monthMap.get(monthKey) || { empenhado: 0, pago: 0 }
     monthMap.set(monthKey, {
       empenhado: current.empenhado + entry.committed,
@@ -159,27 +174,8 @@ export const getEvolutionChartData = async () => {
     })
   })
 
-  // If no data, return empty array
   if (monthMap.size === 0) return []
 
-  // Sort by month index might be tricky with "Short" names and no year.
-  // For simplicity, let's just return what we have or try to sort if possible.
-  // Assuming data is from current year mostly.
-  const monthsOrder = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ]
-  // Portuguese mapping if locale is pt-BR
   const monthsOrderPt = [
     'jan',
     'fev',
