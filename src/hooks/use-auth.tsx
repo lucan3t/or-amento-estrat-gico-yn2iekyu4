@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   ReactNode,
+  useMemo,
 } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
@@ -44,7 +45,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Error getting session:', error)
+      }
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -75,33 +79,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const signInWithGoogle = async () => {
+    const redirectUrl = `${window.location.origin}/`
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: redirectUrl,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
         },
       },
     })
+
+    if (error) {
+      console.error('Google Auth Error:', error)
+    }
+
     return { error }
   }
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
+    if (!error) {
+      setSession(null)
+      setUser(null)
+    }
     return { error }
   }
 
-  const value = {
-    user,
-    session,
-    signUp,
-    signIn,
-    signInWithGoogle,
-    signOut,
-    loading,
-  }
+  const value = useMemo(
+    () => ({
+      user,
+      session,
+      signUp,
+      signIn,
+      signInWithGoogle,
+      signOut,
+      loading,
+    }),
+    [user, session, loading],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
