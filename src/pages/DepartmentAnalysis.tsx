@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { DEPARTMENTS, INSTITUTIONAL_AXIS, PERIODS } from '@/lib/constants'
-import { getDepartmentPerformance } from '@/lib/mockData'
+import { INSTITUTIONAL_AXIS, PERIODS } from '@/lib/constants'
+import { getDepartmentPerformanceData } from '@/services/budget'
 import {
   ChartContainer,
   ChartTooltip,
@@ -23,13 +23,29 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { Loader2 } from 'lucide-react'
 
 export default function DepartmentAnalysis() {
   const [selectedAxis, setSelectedAxis] = useState<string>('all')
   const [selectedPeriod, setSelectedPeriod] = useState<string>('2024')
   const [focusDept, setFocusDept] = useState<string>('')
+  const [loading, setLoading] = useState(true)
+  const [deptData, setDeptData] = useState<any[]>([])
 
-  const deptData = getDepartmentPerformance().slice(0, 8) // Limit for demo
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true)
+        const data = await getDepartmentPerformanceData()
+        setDeptData(data)
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
 
   const chartConfig = {
     dotacao: { label: 'Dotação', color: 'hsl(var(--muted-foreground))' },
@@ -40,6 +56,24 @@ export default function DepartmentAnalysis() {
   const focusDeptData = focusDept
     ? deptData.find((d) => d.id === focusDept)
     : deptData[0]
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="animate-spin mr-2" /> Carregando...
+      </div>
+    )
+  }
+
+  if (deptData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] bg-muted/20 rounded-lg">
+        <p className="text-muted-foreground">
+          Nenhum dado encontrado para análise de órgãos.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -95,7 +129,7 @@ export default function DepartmentAnalysis() {
               <div className="h-[400px]">
                 <ChartContainer config={chartConfig} className="h-full w-full">
                   <BarChart
-                    data={deptData}
+                    data={deptData.slice(0, 10)}
                     margin={{ top: 20, right: 0, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid
@@ -154,11 +188,11 @@ export default function DepartmentAnalysis() {
             </CardHeader>
             <CardContent>
               <Select
-                value={focusDept || deptData[0].id}
+                value={focusDept || deptData[0]?.id}
                 onValueChange={setFocusDept}
               >
                 <SelectTrigger className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
                   {deptData.map((d) => (

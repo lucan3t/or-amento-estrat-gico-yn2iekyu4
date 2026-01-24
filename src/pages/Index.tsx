@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -15,10 +15,10 @@ import {
 } from '@/components/ui/select'
 import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
 import {
-  getGlobalSummary,
-  getDepartmentPerformance,
-  getEvolutionData,
-} from '@/lib/mockData'
+  getAggregatedSummary,
+  getDepartmentPerformanceData,
+  getEvolutionChartData,
+} from '@/services/budget'
 import {
   ChartContainer,
   ChartTooltip,
@@ -36,15 +36,36 @@ import {
   YAxis,
 } from 'recharts'
 import { cn } from '@/lib/utils'
+import { Loader2 } from 'lucide-react'
 
 export default function Index() {
   const [selectedDept, setSelectedDept] = useState<string>('all')
   const [selectedProg, setSelectedProg] = useState<string>('all')
+  const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState<any>(null)
+  const [deptPerformance, setDeptPerformance] = useState<any[]>([])
+  const [evolutionData, setEvolutionData] = useState<any[]>([])
 
-  // Mock data fetching
-  const summary = getGlobalSummary()
-  const deptPerformance = getDepartmentPerformance()
-  const evolutionData = getEvolutionData()
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true)
+        const [sum, dept, evol] = await Promise.all([
+          getAggregatedSummary(),
+          getDepartmentPerformanceData(),
+          getEvolutionChartData(),
+        ])
+        setSummary(sum)
+        setDeptPerformance(dept)
+        setEvolutionData(evol)
+      } catch (error) {
+        console.error('Failed to fetch dashboard data', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -59,40 +80,6 @@ export default function Index() {
     return 'text-danger bg-danger/10 border-danger/20 animate-pulse-slow'
   }
 
-  const summaryCards = [
-    {
-      title: 'Dotação Atualizada',
-      value: summary.dotacao,
-      percentage: 100,
-      isMain: true,
-    },
-    {
-      title: 'Empenhado',
-      value: summary.empenhado,
-      percentage: (summary.empenhado / summary.dotacao) * 100,
-    },
-    {
-      title: 'Liquidado',
-      value: summary.liquidado,
-      percentage: (summary.liquidado / summary.dotacao) * 100,
-    },
-    {
-      title: 'Pago',
-      value: summary.pago,
-      percentage: (summary.pago / summary.dotacao) * 100,
-    },
-    {
-      title: 'Reservado',
-      value: summary.reservado,
-      percentage: (summary.reservado / summary.dotacao) * 100,
-    },
-    {
-      title: 'Disponível',
-      value: summary.disponivel,
-      percentage: (summary.disponivel / summary.dotacao) * 100,
-    },
-  ]
-
   const chartConfig = {
     pago: {
       label: 'Pago',
@@ -103,6 +90,72 @@ export default function Index() {
       color: 'hsl(var(--primary))',
     },
   }
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg text-muted-foreground">
+          Carregando dados...
+        </span>
+      </div>
+    )
+  }
+
+  // Handle empty state
+  if (!summary || summary.dotacao === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center p-8 bg-muted/20 rounded-lg border-2 border-dashed">
+        <h2 className="text-2xl font-semibold mb-2">Sem dados orçamentários</h2>
+        <p className="text-muted-foreground mb-6 max-w-md">
+          Ainda não existem registros no banco de dados. Acesse "Gestão
+          Orçamentária" para adicionar novos dados.
+        </p>
+      </div>
+    )
+  }
+
+  const summaryCards = [
+    {
+      title: 'Dotação Total',
+      value: summary.dotacao,
+      percentage: 100,
+      isMain: true,
+    },
+    {
+      title: 'Empenhado',
+      value: summary.empenhado,
+      percentage: summary.dotacao
+        ? (summary.empenhado / summary.dotacao) * 100
+        : 0,
+    },
+    {
+      title: 'Liquidado',
+      value: summary.liquidado,
+      percentage: summary.dotacao
+        ? (summary.liquidado / summary.dotacao) * 100
+        : 0,
+    },
+    {
+      title: 'Pago',
+      value: summary.pago,
+      percentage: summary.dotacao ? (summary.pago / summary.dotacao) * 100 : 0,
+    },
+    {
+      title: 'Reservado',
+      value: summary.reservado,
+      percentage: summary.dotacao
+        ? (summary.reservado / summary.dotacao) * 100
+        : 0,
+    },
+    {
+      title: 'Disponível',
+      value: summary.disponivel,
+      percentage: summary.dotacao
+        ? (summary.disponivel / summary.dotacao) * 100
+        : 0,
+    },
+  ]
 
   return (
     <div className="space-y-6">
@@ -193,41 +246,47 @@ export default function Index() {
           </CardHeader>
           <CardContent>
             <div className="h-[350px]">
-              <ChartContainer config={chartConfig} className="h-full w-full">
-                <BarChart
-                  accessibilityLayer
-                  data={deptPerformance.slice(0, 10)}
-                  layout="vertical"
-                  margin={{ left: 0, right: 30, top: 0, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    horizontal={true}
-                    vertical={false}
-                    strokeDasharray="3 3"
-                    strokeOpacity={0.5}
-                  />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    tickLine={false}
-                    tickMargin={10}
-                    axisLine={false}
-                    width={100}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <XAxis type="number" hide />
-                  <ChartTooltip
-                    content={<ChartTooltipContent indicator="line" />}
-                  />
-                  <Bar
-                    dataKey="executionRate"
+              {deptPerformance.length > 0 ? (
+                <ChartContainer config={chartConfig} className="h-full w-full">
+                  <BarChart
+                    accessibilityLayer
+                    data={deptPerformance.slice(0, 10)}
                     layout="vertical"
-                    fill="var(--color-pago)"
-                    radius={[0, 4, 4, 0]}
-                    barSize={20}
-                  />
-                </BarChart>
-              </ChartContainer>
+                    margin={{ left: 0, right: 30, top: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      horizontal={true}
+                      vertical={false}
+                      strokeDasharray="3 3"
+                      strokeOpacity={0.5}
+                    />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      tickLine={false}
+                      tickMargin={10}
+                      axisLine={false}
+                      width={100}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <XAxis type="number" hide />
+                    <ChartTooltip
+                      content={<ChartTooltipContent indicator="line" />}
+                    />
+                    <Bar
+                      dataKey="executionRate"
+                      layout="vertical"
+                      fill="var(--color-pago)"
+                      radius={[0, 4, 4, 0]}
+                      barSize={20}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                  Sem dados para exibir
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -236,92 +295,96 @@ export default function Index() {
         <Card className="col-span-1 shadow-sm">
           <CardHeader>
             <CardTitle>Evolução da Execução</CardTitle>
-            <CardDescription>
-              Progresso mensal acumulado (Empenhado vs Pago)
-            </CardDescription>
+            <CardDescription>Acumulado por mês de registro</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[350px]">
-              <ChartContainer config={chartConfig} className="h-full w-full">
-                <AreaChart
-                  data={evolutionData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient
-                      id="fillEmpenhado"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="5%"
-                        stopColor="var(--color-empenhado)"
-                        stopOpacity={0.3}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="var(--color-empenhado)"
-                        stopOpacity={0.0}
-                      />
-                    </linearGradient>
-                    <linearGradient id="fillPago" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="5%"
-                        stopColor="var(--color-pago)"
-                        stopOpacity={0.4}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="var(--color-pago)"
-                        stopOpacity={0.05}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    vertical={false}
-                    strokeDasharray="3 3"
-                    strokeOpacity={0.5}
-                  />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <YAxis
-                    tickFormatter={(value) =>
-                      `R$${(value / 1000000).toFixed(0)}M`
-                    }
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    width={60}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <ChartTooltip
-                    content={<ChartTooltipContent indicator="dot" />}
-                  />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Area
-                    dataKey="empenhado"
-                    type="natural"
-                    fill="url(#fillEmpenhado)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-empenhado)"
-                    stackId="a"
-                  />
-                  <Area
-                    dataKey="pago"
-                    type="natural"
-                    fill="url(#fillPago)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-pago)"
-                    stackId="b"
-                  />
-                </AreaChart>
-              </ChartContainer>
+              {evolutionData.length > 0 ? (
+                <ChartContainer config={chartConfig} className="h-full w-full">
+                  <AreaChart
+                    data={evolutionData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="fillEmpenhado"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="var(--color-empenhado)"
+                          stopOpacity={0.3}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="var(--color-empenhado)"
+                          stopOpacity={0.0}
+                        />
+                      </linearGradient>
+                      <linearGradient id="fillPago" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="5%"
+                          stopColor="var(--color-pago)"
+                          stopOpacity={0.4}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="var(--color-pago)"
+                          stopOpacity={0.05}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      vertical={false}
+                      strokeDasharray="3 3"
+                      strokeOpacity={0.5}
+                    />
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                    />
+                    <YAxis
+                      tickFormatter={(value) =>
+                        `R$${(value / 1000000).toFixed(0)}M`
+                      }
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      width={60}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent indicator="dot" />}
+                    />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Area
+                      dataKey="empenhado"
+                      type="natural"
+                      fill="url(#fillEmpenhado)"
+                      fillOpacity={0.4}
+                      stroke="var(--color-empenhado)"
+                      stackId="a"
+                    />
+                    <Area
+                      dataKey="pago"
+                      type="natural"
+                      fill="url(#fillPago)"
+                      fillOpacity={0.4}
+                      stroke="var(--color-pago)"
+                      stackId="b"
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                  Adicione dados para ver a evolução
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

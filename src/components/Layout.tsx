@@ -1,4 +1,4 @@
-import { Outlet, useLocation, Link } from 'react-router-dom'
+import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Wallet,
@@ -7,7 +7,7 @@ import {
   Search,
   Bell,
   User,
-  Menu,
+  LogOut,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
 
 const NAV_ITEMS = [
   {
@@ -59,10 +59,24 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   const location = useLocation()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/login')
+  }
 
   const getPageTitle = () => {
     const item = NAV_ITEMS.find((nav) => nav.url === location.pathname)
     return item ? item.title : 'Orçamento Estratégico'
+  }
+
+  const getUserInitials = () => {
+    if (user?.email) {
+      return user.email.substring(0, 2).toUpperCase()
+    }
+    return 'GO'
   }
 
   return (
@@ -101,15 +115,19 @@ export default function Layout() {
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
             <Avatar className="size-8 rounded-lg">
               <AvatarImage
-                src="https://img.usecurling.com/ppl/thumbnail?gender=male"
+                src={`https://img.usecurling.com/ppl/thumbnail?gender=male&seed=${user?.id}`}
                 alt="User"
               />
-              <AvatarFallback className="rounded-lg">GO</AvatarFallback>
+              <AvatarFallback className="rounded-lg">
+                {getUserInitials()}
+              </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-              <span className="truncate font-semibold">Carlos Silva</span>
+              <span className="truncate font-semibold">
+                {user?.email?.split('@')[0]}
+              </span>
               <span className="truncate text-xs text-sidebar-foreground/70">
-                Gestor Orçamentário
+                Gestor
               </span>
             </div>
           </div>
@@ -144,8 +162,13 @@ export default function Layout() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Configurações</DropdownMenuItem>
-                  <DropdownMenuItem>Sair</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="text-danger focus:text-danger"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sair</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -156,7 +179,7 @@ export default function Layout() {
         </main>
         <footer className="border-t py-4 px-6 text-center text-xs text-muted-foreground bg-muted/30">
           <p>
-            © 2026 Orçamento Estratégico. v1.0.0. Todos os direitos reservados.
+            © 2026 Orçamento Estratégico. v1.1.0. Todos os direitos reservados.
           </p>
         </footer>
       </SidebarInset>

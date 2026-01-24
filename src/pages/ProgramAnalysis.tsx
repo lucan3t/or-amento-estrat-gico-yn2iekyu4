@@ -1,11 +1,5 @@
-import { useState } from 'react'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -15,16 +9,31 @@ import {
 } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { DEPARTMENTS, PROGRAMS, PERIODS } from '@/lib/constants'
-import { getProgramRanking } from '@/lib/mockData'
+import { DEPARTMENTS, PERIODS } from '@/lib/constants'
+import { getProgramPerformanceData } from '@/services/budget'
 import { cn } from '@/lib/utils'
-import { AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react'
+import { AlertCircle, CheckCircle2, TrendingUp, Loader2 } from 'lucide-react'
 
 export default function ProgramAnalysis() {
   const [selectedDept, setSelectedDept] = useState<string>('all')
   const [selectedPeriod, setSelectedPeriod] = useState<string>('2024')
+  const [loading, setLoading] = useState(true)
+  const [programData, setProgramData] = useState<any[]>([])
 
-  const programData = getProgramRanking()
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true)
+        const data = await getProgramPerformanceData()
+        setProgramData(data)
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
 
   const getStatus = (rate: number) => {
     if (rate >= 70)
@@ -44,6 +53,24 @@ export default function ProgramAnalysis() {
       bg: 'bg-danger',
       badge: 'bg-danger/15 text-danger hover:bg-danger/25',
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="animate-spin mr-2" /> Carregando...
+      </div>
+    )
+  }
+
+  if (programData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] bg-muted/20 rounded-lg">
+        <p className="text-muted-foreground">
+          Nenhum dado encontrado para análise de programas.
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -168,8 +195,8 @@ export default function ProgramAnalysis() {
                     Alta Performance
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    3 programas superaram a meta de 70% de execução, com
-                    destaque para <strong>ARAPIRACA MAIS SEGURA</strong>.
+                    {programData.filter((p) => p.executionRate > 70).length}{' '}
+                    programas superaram a meta de 70% de execução.
                   </p>
                 </div>
               </div>
@@ -181,8 +208,8 @@ export default function ProgramAnalysis() {
                     Requer Atenção
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Os programas de infraestrutura estão com execução média de
-                    35%, impactando o resultado global.
+                    {programData.filter((p) => p.executionRate < 40).length}{' '}
+                    programas estão com execução abaixo de 40%.
                   </p>
                 </div>
               </div>

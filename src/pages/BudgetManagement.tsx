@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
+import { createBudgetEntry } from '@/services/budget'
 
 const budgetSchema = z.object({
   orgao: z.string().min(1, 'Selecione um órgão'),
@@ -58,16 +59,31 @@ export default function BudgetManagement() {
     },
   })
 
-  // Format currency on blur or simple mask could be used, keeping it simple for now
   const onSubmit = async (data: BudgetFormValues) => {
     setIsSubmitting(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    console.log(data)
-    toast.success('Alterações salvas com sucesso!', {
-      description: 'Os dados orçamentários foram atualizados.',
-    })
-    setIsSubmitting(false)
+    try {
+      await createBudgetEntry({
+        department: data.orgao,
+        program: data.programa,
+        dotation: Number(data.dotacao),
+        committed: Number(data.empenhado),
+        liquidated: Number(data.liquidado),
+        paid: Number(data.pago),
+        reserved: Number(data.reservado),
+      })
+
+      toast.success('Salvo com sucesso!', {
+        description: 'Os dados foram salvos no banco de dados.',
+      })
+      form.reset()
+    } catch (error: any) {
+      console.error(error)
+      toast.error('Erro ao salvar', {
+        description: error.message || 'Não foi possível salvar os dados.',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const calculateDisponivel = () => {
@@ -85,7 +101,7 @@ export default function BudgetManagement() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Gestão Orçamentária</CardTitle>
           <CardDescription>
-            Atualize os dados de execução orçamentária por órgão e programa.
+            Adicione novos registros orçamentários ao banco de dados.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -101,6 +117,7 @@ export default function BudgetManagement() {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -128,6 +145,7 @@ export default function BudgetManagement() {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -154,7 +172,7 @@ export default function BudgetManagement() {
                   name="dotacao"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Dotação Atualizada (R$)</FormLabel>
+                      <FormLabel>Dotação (R$)</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="0.00" {...field} />
                       </FormControl>
@@ -238,7 +256,7 @@ export default function BudgetManagement() {
                   disabled={isSubmitting}
                   className="min-w-[150px]"
                 >
-                  {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
+                  {isSubmitting ? 'Salvando...' : 'Salvar Registro'}
                 </Button>
               </CardFooter>
             </form>
