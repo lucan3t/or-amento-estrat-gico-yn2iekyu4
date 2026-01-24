@@ -36,7 +36,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth'
 
 const NAV_ITEMS = [
@@ -83,6 +83,16 @@ export default function Layout() {
   }
 
   const getUserInitials = () => {
+    const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name
+
+    if (fullName) {
+      const names = fullName.trim().split(/\s+/)
+      if (names.length >= 2) {
+        return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
+      }
+      return fullName.substring(0, 2).toUpperCase()
+    }
+
     if (user?.email) {
       return user.email.substring(0, 2).toUpperCase()
     }
@@ -123,12 +133,8 @@ export default function Layout() {
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border/50 p-4">
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-            <Avatar className="size-8 rounded-lg">
-              <AvatarImage
-                src={`https://img.usecurling.com/ppl/thumbnail?gender=male&seed=${user?.id}`}
-                alt="User"
-              />
-              <AvatarFallback className="rounded-lg">
+            <Avatar className="size-8">
+              <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-bold">
                 {getUserInitials()}
               </AvatarFallback>
             </Avatar>
