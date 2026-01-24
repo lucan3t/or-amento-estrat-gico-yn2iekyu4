@@ -20,7 +20,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const { signIn, signUp, signInWithGoogle, user, loading } = useAuth()
+  const { signIn, signUp, user, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -53,23 +53,6 @@ export default function Login() {
         description: error.message || 'Ocorreu um erro ao tentar entrar.',
       })
     } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    try {
-      const { error } = await signInWithGoogle()
-      if (error) throw error
-      // Redirect happens automatically to the provider
-    } catch (error: any) {
-      console.error(error)
-      toast.error('Erro na autenticação com Google', {
-        description:
-          error.message ||
-          'Ocorreu um erro ao tentar entrar com Google. Tente novamente.',
-      })
       setIsLoading(false)
     }
   }
@@ -132,36 +115,6 @@ export default function Login() {
               )}
             </Button>
           </form>
-
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">
-                Ou continue com
-              </span>
-            </div>
-          </div>
-
-          <Button
-            variant="outline"
-            type="button"
-            className="w-full"
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <img
-                src="https://img.usecurling.com/i?q=google&shape=fill&color=multicolor"
-                alt="Google"
-                className="mr-2 h-4 w-4"
-              />
-            )}
-            Entrar com Google
-          </Button>
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button

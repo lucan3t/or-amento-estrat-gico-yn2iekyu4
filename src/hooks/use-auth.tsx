@@ -14,7 +14,6 @@ interface AuthContextType {
   session: Session | null
   signUp: (email: string, password: string) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
-  signInWithGoogle: () => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
   loading: boolean
 }
@@ -78,27 +77,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error }
   }
 
-  const signInWithGoogle = async () => {
-    const redirectUrl = `${window.location.origin}/`
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      },
-    })
-
-    if (error) {
-      console.error('Google Auth Error:', error)
-    }
-
-    return { error }
-  }
-
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (!error) {
@@ -114,7 +92,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       session,
       signUp,
       signIn,
-      signInWithGoogle,
       signOut,
       loading,
     }),
