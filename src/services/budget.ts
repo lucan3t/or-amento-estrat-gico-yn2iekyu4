@@ -52,11 +52,21 @@ export const deleteBudgetEntry = async (id: string) => {
   if (error) throw error
 }
 
-export const getBudgetEntries = async () => {
-  const { data, error } = await supabase
+export const getBudgetEntries = async (startDate?: Date, endDate?: Date) => {
+  let query = supabase
     .from('budget_entries')
     .select('*')
     .order('created_at', { ascending: false })
+
+  if (startDate) {
+    query = query.gte('created_at', startDate.toISOString())
+  }
+
+  if (endDate) {
+    query = query.lte('created_at', endDate.toISOString())
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
   return data as BudgetEntry[]
@@ -88,8 +98,11 @@ export const getAggregatedSummary = async () => {
   return summary
 }
 
-export const getDepartmentPerformanceData = async () => {
-  const entries = await getBudgetEntries()
+export const getDepartmentPerformanceData = async (
+  startDate?: Date,
+  endDate?: Date,
+) => {
+  const entries = await getBudgetEntries(startDate, endDate)
   const deptMap = new Map<
     string,
     { dotacao: number; empenhado: number; pago: number }
