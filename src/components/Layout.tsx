@@ -31,6 +31,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/use-auth'
 
@@ -63,8 +68,13 @@ export default function Layout() {
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
-    await signOut()
-    navigate('/login')
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+      navigate('/login')
+    }
   }
 
   const getPageTitle = () => {
@@ -122,13 +132,30 @@ export default function Layout() {
                 {getUserInitials()}
               </AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-              <span className="truncate font-semibold">
-                {user?.email?.split('@')[0]}
-              </span>
-              <span className="truncate text-xs text-sidebar-foreground/70">
-                Gestor
-              </span>
+            <div className="flex flex-1 items-center justify-between overflow-hidden group-data-[collapsible=icon]:hidden">
+              <div className="grid text-left text-sm leading-tight truncate mr-2">
+                <span className="truncate font-semibold">
+                  {user?.email?.split('@')[0]}
+                </span>
+                <span className="truncate text-xs text-sidebar-foreground/70">
+                  Gestor
+                </span>
+              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleSignOut}
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                    title="Sair"
+                  >
+                    <LogOut className="size-4" />
+                    <span className="sr-only">Sair</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Sair</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </SidebarFooter>
@@ -164,7 +191,7 @@ export default function Layout() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleSignOut}
-                    className="text-danger focus:text-danger"
+                    className="text-danger focus:text-danger cursor-pointer"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sair</span>

@@ -10,6 +10,7 @@ import DepartmentAnalysis from './pages/DepartmentAnalysis'
 import ProgramAnalysis from './pages/ProgramAnalysis'
 import Login from './pages/Login'
 import { AuthProvider, useAuth } from './hooks/use-auth'
+import { Loader2 } from 'lucide-react'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth()
@@ -17,7 +18,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center">
-        Carregando...
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
