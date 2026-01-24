@@ -113,6 +113,7 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: 'line' | 'dot' | 'dashed'
       nameKey?: string
       labelKey?: string
+      indicatorClassName?: string
     }
 >(
   (
@@ -130,6 +131,8 @@ const ChartTooltipContent = React.forwardRef<
       color,
       nameKey,
       labelKey,
+      indicatorClassName,
+      ...props
     },
     ref,
   ) => {
@@ -184,6 +187,7 @@ const ChartTooltipContent = React.forwardRef<
           'grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl',
           className,
         )}
+        {...props}
       >
         {!nestLabel ? tooltipLabel : null}
         <div className="grid gap-1.5">
@@ -218,6 +222,7 @@ const ChartTooltipContent = React.forwardRef<
                                 indicator === 'dashed',
                               'my-0.5': nestLabel && indicator === 'dashed',
                             },
+                            indicatorClassName,
                           )}
                           style={
                             {

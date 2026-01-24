@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
 import {
   getGlobalSummary,
@@ -35,7 +34,6 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
-  ResponsiveContainer,
 } from 'recharts'
 import { cn } from '@/lib/utils'
 
