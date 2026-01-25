@@ -118,7 +118,7 @@ export default function ProgramAnalysis() {
                 Ranking de Execução por Programa
               </h2>
               <div className="text-sm text-muted-foreground">
-                Ordenado por % Pago
+                Ordenado por % Liquidado
               </div>
             </div>
 
@@ -158,7 +158,7 @@ export default function ProgramAnalysis() {
                           <div className="flex justify-between text-xs text-muted-foreground">
                             <span>Progresso Financeiro</span>
                             <span>
-                              R$ {(prog.pago / 1000000).toFixed(1)}M de R${' '}
+                              R$ {(prog.liquidado / 1000000).toFixed(1)}M de R${' '}
                               {(prog.dotacao / 1000000).toFixed(1)}M
                             </span>
                           </div>

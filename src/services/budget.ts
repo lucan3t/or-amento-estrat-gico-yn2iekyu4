@@ -194,11 +194,6 @@ export const getDepartmentPerformanceData = async (
     { dotacao: number; empenhado: number; liquidado: number; pago: number }
   >()
 
-  // Initialize all departments with 0 only if no department filter is active or if we want to show all
-  // But usually performance chart should show relevant departments
-  // If specific departments selected, maybe we only want those?
-  // For now, let's include all to maintain structure, or just the ones in entries if filtered
-  // To keep consistent with dashboard showing all:
   if (
     !departmentIds ||
     departmentIds === 'all' ||
@@ -208,7 +203,6 @@ export const getDepartmentPerformanceData = async (
       deptMap.set(d.id, { dotacao: 0, empenhado: 0, liquidado: 0, pago: 0 })
     })
   } else {
-    // If specific departments selected, initialize them
     const ids = Array.isArray(departmentIds) ? departmentIds : [departmentIds]
     ids.forEach((id) => {
       deptMap.set(id, { dotacao: 0, empenhado: 0, liquidado: 0, pago: 0 })
@@ -216,10 +210,6 @@ export const getDepartmentPerformanceData = async (
   }
 
   entries.forEach((entry) => {
-    // Only process if it is in the map (handles case where filter might not be perfect or map initialization strategy)
-    // Or if map was empty (implicit 'all' but using entries), we should add it.
-    // However, above we initialized based on filter.
-    // Let's ensure we capture the entry
     const current = deptMap.get(entry.department) || {
       dotacao: 0,
       empenhado: 0,
@@ -262,17 +252,25 @@ export const getProgramPerformanceData = async (
     departmentIds,
     programId,
   )
-  const progMap = new Map<string, { dotacao: number; pago: number }>()
+  const progMap = new Map<
+    string,
+    { dotacao: number; pago: number; liquidado: number }
+  >()
 
   PROGRAMS.forEach((p) => {
-    progMap.set(p.id, { dotacao: 0, pago: 0 })
+    progMap.set(p.id, { dotacao: 0, pago: 0, liquidado: 0 })
   })
 
   entries.forEach((entry) => {
-    const current = progMap.get(entry.program) || { dotacao: 0, pago: 0 }
+    const current = progMap.get(entry.program) || {
+      dotacao: 0,
+      pago: 0,
+      liquidado: 0,
+    }
     progMap.set(entry.program, {
       dotacao: current.dotacao + Number(entry.dotation || 0),
       pago: current.pago + Number(entry.paid || 0),
+      liquidado: current.liquidado + Number(entry.liquidated || 0),
     })
   })
 
@@ -285,7 +283,7 @@ export const getProgramPerformanceData = async (
         fullName: prog?.name || id,
         ...values,
         executionRate:
-          values.dotacao > 0 ? (values.pago / values.dotacao) * 100 : 0,
+          values.dotacao > 0 ? (values.liquidado / values.dotacao) * 100 : 0,
       }
     })
     .filter((p) => p.dotacao > 0)
@@ -298,7 +296,6 @@ export const getEvolutionChartData = async (
   startDate?: Date,
   endDate?: Date,
 ) => {
-  // Use current year if dates not provided
   const currentYear = new Date().getFullYear()
   const start = startDate || new Date(currentYear, 0, 1)
   const end = endDate || new Date(currentYear, 11, 31, 23, 59, 59)
@@ -310,18 +307,14 @@ export const getEvolutionChartData = async (
     { dotacao: number; liquidado: number; sortKey: number }
   >()
 
-  // Helper to iterate months to ensure all months in range are present (even empty ones)
   const iterDate = new Date(start.getFullYear(), start.getMonth(), 1)
   const lastDate = new Date(end.getFullYear(), end.getMonth(), 1)
 
-  // Safety break to prevent infinite loops if dates are weird
   let loops = 0
   while (iterDate <= lastDate && loops < 120) {
-    // 10 years max
     const key = iterDate
       .toLocaleString('pt-BR', { month: 'short' })
       .replace('.', '')
-    // Append year if range spans multiple years
     const yearSuffix =
       start.getFullYear() !== end.getFullYear()
         ? `/${iterDate.getFullYear().toString().slice(2)}`
@@ -350,8 +343,6 @@ export const getEvolutionChartData = async (
         const current = monthsData.get(fullKey)!
         current.dotacao += Number(entry.dotation || 0)
         current.liquidado += Number(entry.liquidated || 0)
-      } else {
-        // Fallback if loop missed it (should not happen with correct logic)
       }
     }
   })
