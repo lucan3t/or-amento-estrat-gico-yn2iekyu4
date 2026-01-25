@@ -89,6 +89,10 @@ export default function Index() {
       label: 'Empenhado',
       color: 'hsl(var(--primary))',
     },
+    executionRate: {
+      label: 'Liquidado vs Dotação',
+      color: 'hsl(var(--success))',
+    },
   }
 
   if (loading) {
@@ -241,7 +245,7 @@ export default function Index() {
           <CardHeader>
             <CardTitle>Execução por Órgão</CardTitle>
             <CardDescription>
-              Top 10 órgãos por percentual pago vs dotação
+              Top 10 órgãos por percentual liquidado vs dotação
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -276,7 +280,7 @@ export default function Index() {
                     <Bar
                       dataKey="executionRate"
                       layout="vertical"
-                      fill="var(--color-pago)"
+                      fill="var(--color-executionRate)"
                       radius={[0, 4, 4, 0]}
                       barSize={20}
                     />

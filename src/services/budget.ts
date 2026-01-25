@@ -154,22 +154,24 @@ export const getDepartmentPerformanceData = async (
   const entries = await getBudgetEntries(startDate, endDate, departmentId)
   const deptMap = new Map<
     string,
-    { dotacao: number; empenhado: number; pago: number }
+    { dotacao: number; empenhado: number; liquidado: number; pago: number }
   >()
 
   DEPARTMENTS.forEach((d) => {
-    deptMap.set(d.id, { dotacao: 0, empenhado: 0, pago: 0 })
+    deptMap.set(d.id, { dotacao: 0, empenhado: 0, liquidado: 0, pago: 0 })
   })
 
   entries.forEach((entry) => {
     const current = deptMap.get(entry.department) || {
       dotacao: 0,
       empenhado: 0,
+      liquidado: 0,
       pago: 0,
     }
     deptMap.set(entry.department, {
       dotacao: current.dotacao + entry.dotation,
       empenhado: current.empenhado + entry.committed,
+      liquidado: current.liquidado + entry.liquidated,
       pago: current.pago + entry.paid,
     })
   })
@@ -183,7 +185,7 @@ export const getDepartmentPerformanceData = async (
         fullName: dept?.name || id,
         ...values,
         executionRate:
-          values.dotacao > 0 ? (values.pago / values.dotacao) * 100 : 0,
+          values.dotacao > 0 ? (values.liquidado / values.dotacao) * 100 : 0,
       }
     })
     .filter((d) => d.dotacao > 0 || d.empenhado > 0)
