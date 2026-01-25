@@ -104,7 +104,7 @@ export const getAvailableDepartments = async () => {
 export const getBudgetEntries = async (
   startDate?: Date,
   endDate?: Date,
-  departmentId?: string,
+  departmentIds?: string | string[],
   programId?: string,
 ) => {
   let query = supabase
@@ -120,8 +120,15 @@ export const getBudgetEntries = async (
     query = query.lte('created_at', endDate.toISOString())
   }
 
-  if (departmentId && departmentId !== 'all') {
-    query = query.eq('department', departmentId)
+  if (departmentIds) {
+    if (Array.isArray(departmentIds)) {
+      const validIds = departmentIds.filter((id) => id !== 'all')
+      if (validIds.length > 0) {
+        query = query.in('department', validIds)
+      }
+    } else if (departmentIds !== 'all') {
+      query = query.eq('department', departmentIds)
+    }
   }
 
   if (programId && programId !== 'all') {
@@ -135,13 +142,15 @@ export const getBudgetEntries = async (
 }
 
 export const getAggregatedSummary = async (
-  departmentId?: string,
+  departmentIds?: string | string[],
   programId?: string,
+  startDate?: Date,
+  endDate?: Date,
 ): Promise<BudgetSummary> => {
   const entries = await getBudgetEntries(
-    undefined,
-    undefined,
-    departmentId,
+    startDate,
+    endDate,
+    departmentIds,
     programId,
   )
 
@@ -171,13 +180,13 @@ export const getAggregatedSummary = async (
 export const getDepartmentPerformanceData = async (
   startDate?: Date,
   endDate?: Date,
-  departmentId?: string,
+  departmentIds?: string | string[],
   programId?: string,
 ) => {
   const entries = await getBudgetEntries(
     startDate,
     endDate,
-    departmentId,
+    departmentIds,
     programId,
   )
   const deptMap = new Map<
@@ -185,11 +194,32 @@ export const getDepartmentPerformanceData = async (
     { dotacao: number; empenhado: number; liquidado: number; pago: number }
   >()
 
-  DEPARTMENTS.forEach((d) => {
-    deptMap.set(d.id, { dotacao: 0, empenhado: 0, liquidado: 0, pago: 0 })
-  })
+  // Initialize all departments with 0 only if no department filter is active or if we want to show all
+  // But usually performance chart should show relevant departments
+  // If specific departments selected, maybe we only want those?
+  // For now, let's include all to maintain structure, or just the ones in entries if filtered
+  // To keep consistent with dashboard showing all:
+  if (
+    !departmentIds ||
+    departmentIds === 'all' ||
+    (Array.isArray(departmentIds) && departmentIds.length === 0)
+  ) {
+    DEPARTMENTS.forEach((d) => {
+      deptMap.set(d.id, { dotacao: 0, empenhado: 0, liquidado: 0, pago: 0 })
+    })
+  } else {
+    // If specific departments selected, initialize them
+    const ids = Array.isArray(departmentIds) ? departmentIds : [departmentIds]
+    ids.forEach((id) => {
+      deptMap.set(id, { dotacao: 0, empenhado: 0, liquidado: 0, pago: 0 })
+    })
+  }
 
   entries.forEach((entry) => {
+    // Only process if it is in the map (handles case where filter might not be perfect or map initialization strategy)
+    // Or if map was empty (implicit 'all' but using entries), we should add it.
+    // However, above we initialized based on filter.
+    // Let's ensure we capture the entry
     const current = deptMap.get(entry.department) || {
       dotacao: 0,
       empenhado: 0,
@@ -223,13 +253,13 @@ export const getDepartmentPerformanceData = async (
 export const getProgramPerformanceData = async (
   startDate?: Date,
   endDate?: Date,
-  departmentId?: string,
+  departmentIds?: string | string[],
   programId?: string,
 ) => {
   const entries = await getBudgetEntries(
     startDate,
     endDate,
-    departmentId,
+    departmentIds,
     programId,
   )
   const progMap = new Map<string, { dotacao: number; pago: number }>()
@@ -263,50 +293,82 @@ export const getProgramPerformanceData = async (
 }
 
 export const getEvolutionChartData = async (
-  departmentId?: string,
+  departmentIds?: string | string[],
   programId?: string,
+  startDate?: Date,
+  endDate?: Date,
 ) => {
-  // Use current year
+  // Use current year if dates not provided
   const currentYear = new Date().getFullYear()
-  const startOfYear = new Date(currentYear, 0, 1)
-  const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59)
+  const start = startDate || new Date(currentYear, 0, 1)
+  const end = endDate || new Date(currentYear, 11, 31, 23, 59, 59)
 
-  const entries = await getBudgetEntries(
-    startOfYear,
-    endOfYear,
-    departmentId,
-    programId,
-  )
+  const entries = await getBudgetEntries(start, end, departmentIds, programId)
 
-  const monthsData = Array(12)
-    .fill(0)
-    .map(() => ({ dotacao: 0, liquidado: 0 }))
+  const monthsData = new Map<
+    string,
+    { dotacao: number; liquidado: number; sortKey: number }
+  >()
+
+  // Helper to iterate months to ensure all months in range are present (even empty ones)
+  const iterDate = new Date(start.getFullYear(), start.getMonth(), 1)
+  const lastDate = new Date(end.getFullYear(), end.getMonth(), 1)
+
+  // Safety break to prevent infinite loops if dates are weird
+  let loops = 0
+  while (iterDate <= lastDate && loops < 120) {
+    // 10 years max
+    const key = iterDate
+      .toLocaleString('pt-BR', { month: 'short' })
+      .replace('.', '')
+    // Append year if range spans multiple years
+    const yearSuffix =
+      start.getFullYear() !== end.getFullYear()
+        ? `/${iterDate.getFullYear().toString().slice(2)}`
+        : ''
+    const fullKey = key + yearSuffix
+
+    const sortKey = iterDate.getTime()
+    monthsData.set(fullKey, { dotacao: 0, liquidado: 0, sortKey })
+    iterDate.setMonth(iterDate.getMonth() + 1)
+    loops++
+  }
 
   entries.forEach((entry) => {
     const date = new Date(entry.created_at)
-    if (date.getFullYear() === currentYear) {
-      const monthIndex = date.getMonth()
-      monthsData[monthIndex].dotacao += Number(entry.dotation || 0)
-      monthsData[monthIndex].liquidado += Number(entry.liquidated || 0)
+    if (date >= start && date <= end) {
+      const key = date
+        .toLocaleString('pt-BR', { month: 'short' })
+        .replace('.', '')
+      const yearSuffix =
+        start.getFullYear() !== end.getFullYear()
+          ? `/${date.getFullYear().toString().slice(2)}`
+          : ''
+      const fullKey = key + yearSuffix
+
+      if (monthsData.has(fullKey)) {
+        const current = monthsData.get(fullKey)!
+        current.dotacao += Number(entry.dotation || 0)
+        current.liquidado += Number(entry.liquidated || 0)
+      } else {
+        // Fallback if loop missed it (should not happen with correct logic)
+      }
     }
   })
 
   let accDotacao = 0
   let accLiquidado = 0
 
-  return monthsData.map((data, index) => {
-    accDotacao += data.dotacao
-    accLiquidado += data.liquidado
+  return Array.from(monthsData.entries())
+    .sort((a, b) => a[1].sortKey - b[1].sortKey)
+    .map(([month, data]) => {
+      accDotacao += data.dotacao
+      accLiquidado += data.liquidado
 
-    const date = new Date(currentYear, index, 1)
-    const month = date
-      .toLocaleString('pt-BR', { month: 'short' })
-      .replace('.', '')
-
-    return {
-      month,
-      dotacao: accDotacao,
-      liquidado: accLiquidado,
-    }
-  })
+      return {
+        month,
+        dotacao: accDotacao,
+        liquidado: accLiquidado,
+      }
+    })
 }

@@ -6,8 +6,6 @@ import {
   startOfYear,
   endOfYear,
   addMonths,
-  setMonth,
-  setYear,
   startOfDay,
   endOfDay,
 } from 'date-fns'
@@ -37,6 +35,7 @@ export type FilterFrequency =
   | 'quarterly'
   | 'quadrimesterly'
   | 'semiannual'
+  | 'annual'
   | 'custom'
 
 interface DateRangeFilterProps {
@@ -48,8 +47,7 @@ export function DateRangeFilter({
   onFilterChange,
   className,
 }: DateRangeFilterProps) {
-  const [frequency, setFrequency] =
-    React.useState<FilterFrequency>('semiannual') // Default to semiannual
+  const [frequency, setFrequency] = React.useState<FilterFrequency>('annual') // Default to annual
   const [year, setYear] = React.useState<string>(
     new Date().getFullYear().toString(),
   )
@@ -70,7 +68,9 @@ export function DateRangeFilter({
       case 'monthly':
         return Array.from({ length: 12 }, (_, i) => ({
           value: (i + 1).toString(),
-          label: format(new Date(2024, i, 1), 'MMMM', { locale: ptBR }),
+          label: format(new Date(parseInt(year), i, 1), 'MMMM', {
+            locale: ptBR,
+          }),
         }))
       case 'bimonthly':
         return [
@@ -99,6 +99,8 @@ export function DateRangeFilter({
           { value: '1', label: '1º Semestre (Jan-Jun)' },
           { value: '2', label: '2º Semestre (Jul-Dez)' },
         ]
+      case 'annual':
+        return [{ value: '1', label: `Ano ${year}` }]
       default:
         return []
     }
@@ -143,6 +145,10 @@ export function DateRangeFilter({
         start = new Date(y, (p - 1) * 6, 1)
         end = endOfMonth(addMonths(start, 5))
         break
+      case 'annual':
+        start = startOfYear(new Date(y, 0, 1))
+        end = endOfYear(new Date(y, 0, 1))
+        break
       default:
         start = startOfYear(new Date(y, 0, 1))
         end = endOfYear(new Date(y, 0, 1))
@@ -173,6 +179,7 @@ export function DateRangeFilter({
             <SelectItem value="quarterly">Trimestral</SelectItem>
             <SelectItem value="quadrimesterly">Quadrimestral</SelectItem>
             <SelectItem value="semiannual">Semestral</SelectItem>
+            <SelectItem value="annual">Anual</SelectItem>
             <SelectItem value="custom">Intervalo Personalizado</SelectItem>
           </SelectContent>
         </Select>
@@ -197,23 +204,25 @@ export function DateRangeFilter({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-xs font-medium mb-1 block text-muted-foreground">
-              Período
-            </label>
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o período" />
-              </SelectTrigger>
-              <SelectContent>
-                {getPeriodOptions().map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {frequency !== 'annual' && (
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-xs font-medium mb-1 block text-muted-foreground">
+                Período
+              </label>
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o período" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getPeriodOptions().map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </>
       ) : (
         <div className="flex-1 min-w-[300px]">
