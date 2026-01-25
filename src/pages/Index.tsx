@@ -18,6 +18,7 @@ import {
   getAggregatedSummary,
   getDepartmentPerformanceData,
   getEvolutionChartData,
+  type BudgetSummary,
 } from '@/services/budget'
 import {
   ChartContainer,
@@ -42,7 +43,7 @@ export default function Index() {
   const [selectedDept, setSelectedDept] = useState<string>('all')
   const [selectedProg, setSelectedProg] = useState<string>('all')
   const [loading, setLoading] = useState(true)
-  const [summary, setSummary] = useState<any>(null)
+  const [summary, setSummary] = useState<BudgetSummary | null>(null)
   const [deptPerformance, setDeptPerformance] = useState<any[]>([])
   const [evolutionData, setEvolutionData] = useState<any[]>([])
 

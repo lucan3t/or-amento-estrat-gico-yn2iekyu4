@@ -15,6 +15,15 @@ export interface BudgetEntry {
   created_at: string
 }
 
+export interface BudgetSummary {
+  dotacao: number
+  empenhado: number
+  liquidado: number
+  pago: number
+  reservado: number
+  disponivel: number
+}
+
 export const createBudgetEntry = async (
   entry: Omit<BudgetEntry, 'id' | 'user_id' | 'created_at'>,
 ) => {
@@ -128,7 +137,7 @@ export const getBudgetEntries = async (
 export const getAggregatedSummary = async (
   departmentId?: string,
   programId?: string,
-) => {
+): Promise<BudgetSummary> => {
   const entries = await getBudgetEntries(
     undefined,
     undefined,
@@ -136,10 +145,10 @@ export const getAggregatedSummary = async (
     programId,
   )
 
-  const initialSummary = {
+  const initialSummary: BudgetSummary = {
     dotacao: 0,
     empenhado: 0,
-    liquidated: 0,
+    liquidado: 0,
     pago: 0,
     reservado: 0,
     disponivel: 0,
@@ -148,7 +157,7 @@ export const getAggregatedSummary = async (
   const summary = entries.reduce((acc, curr) => {
     acc.dotacao += Number(curr.dotation || 0)
     acc.empenhado += Number(curr.committed || 0)
-    acc.liquidated += Number(curr.liquidated || 0)
+    acc.liquidado += Number(curr.liquidated || 0)
     acc.pago += Number(curr.paid || 0)
     acc.reservado += Number(curr.reserved || 0)
     return acc
