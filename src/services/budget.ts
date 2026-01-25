@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
+import { createHistoryEntry } from './history'
 
 export interface BudgetEntry {
   id: string
@@ -17,14 +18,9 @@ export interface BudgetEntry {
 export const createBudgetEntry = async (
   entry: Omit<BudgetEntry, 'id' | 'user_id' | 'created_at'>,
 ) => {
-  // Authentication check removed for public access
   const { data, error } = await supabase
     .from('budget_entries')
-    .insert({
-      ...entry,
-      // We explicitly cast to any to bypass the type definition which might still expect user_id as mandatory string
-      // caused by static types generation not being in sync with the new migration yet
-    } as any)
+    .insert(entry as any)
     .select()
     .single()
 
@@ -36,12 +32,37 @@ export const updateBudgetEntry = async (
   id: string,
   entry: Partial<Omit<BudgetEntry, 'id' | 'user_id' | 'created_at'>>,
 ) => {
+  // 1. Fetch current data for history tracking
+  const { data: oldEntry, error: fetchError } = await supabase
+    .from('budget_entries')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (fetchError) throw fetchError
+
+  // 2. Perform the update
   const { error } = await supabase
     .from('budget_entries')
     .update(entry)
     .eq('id', id)
 
   if (error) throw error
+
+  // 3. Log changes to history
+  if (oldEntry) {
+    const promises = Object.keys(entry).map((key) => {
+      const fieldKey = key as keyof typeof entry
+      const oldValue = oldEntry[fieldKey]
+      const newValue = entry[fieldKey]
+
+      if (oldValue !== newValue) {
+        return createHistoryEntry(id, key, oldValue, newValue)
+      }
+      return Promise.resolve()
+    })
+    await Promise.all(promises)
+  }
 }
 
 export const deleteBudgetEntry = async (id: string) => {

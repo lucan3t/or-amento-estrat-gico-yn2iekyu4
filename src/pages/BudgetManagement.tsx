@@ -41,8 +41,9 @@ import {
   BudgetEntry,
 } from '@/services/budget'
 import { BudgetForm, BudgetFormValues } from '@/components/BudgetForm'
-import { Loader2, Pencil, Trash2 } from 'lucide-react'
-import { parseCurrency } from '@/lib/utils'
+import { BudgetHistorySheet } from '@/components/BudgetHistorySheet'
+import { Loader2, Pencil, Trash2, History, Download } from 'lucide-react'
+import { parseCurrency, formatCurrency } from '@/lib/utils'
 
 export default function BudgetManagement() {
   const [entries, setEntries] = useState<BudgetEntry[]>([])
@@ -50,6 +51,7 @@ export default function BudgetManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingEntry, setEditingEntry] = useState<BudgetEntry | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [historyEntryId, setHistoryEntryId] = useState<string | null>(null)
 
   const fetchEntries = async () => {
     try {
@@ -133,17 +135,65 @@ export default function BudgetManagement() {
     }
   }
 
-  const formatCurrency = (value: number) => {
+  const getDeptName = (id: string) =>
+    DEPARTMENTS.find((d) => d.id === id)?.name || id
+  const getProgName = (id: string) =>
+    PROGRAMS.find((p) => p.id === id)?.name || id
+
+  const handleExport = () => {
+    if (!entries.length) {
+      toast.info('Não há dados para exportar')
+      return
+    }
+
+    const headers = [
+      'Órgão',
+      'Programa',
+      'Dotação',
+      'Reservado',
+      'Empenhado',
+      'Liquidado',
+      'Pago',
+      'Disponível',
+    ]
+
+    const csvContent = [
+      headers.join(';'),
+      ...entries.map((entry) => {
+        const disponivel = entry.dotation - entry.committed - entry.reserved
+        return [
+          `"${getDeptName(entry.department)}"`,
+          `"${getProgName(entry.program)}"`,
+          `"${formatCurrency(entry.dotation)}"`,
+          `"${formatCurrency(entry.reserved)}"`,
+          `"${formatCurrency(entry.committed)}"`,
+          `"${formatCurrency(entry.liquidated)}"`,
+          `"${formatCurrency(entry.paid)}"`,
+          `"${formatCurrency(disponivel)}"`,
+        ].join(';')
+      }),
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute(
+      'download',
+      `orcamento_export_${new Date().toISOString().split('T')[0]}.csv`,
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Exportação concluída com sucesso')
+  }
+
+  const formatBRL = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     }).format(value)
   }
-
-  const getDeptName = (id: string) =>
-    DEPARTMENTS.find((d) => d.id === id)?.name.split(' - ')[1] || id
-  const getProgName = (id: string) =>
-    PROGRAMS.find((p) => p.id === id)?.name.split(' - ')[1] || id
 
   return (
     <div className="space-y-8 pb-10">
@@ -164,9 +214,15 @@ export default function BudgetManagement() {
       </Card>
 
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">
-          Registros Cadastrados
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold tracking-tight">
+            Registros Cadastrados
+          </h2>
+          <Button onClick={handleExport} variant="outline" size="sm">
+            <Download className="mr-2 h-4 w-4" />
+            Exportar CSV
+          </Button>
+        </div>
         <Card>
           <CardContent className="p-0">
             {loading ? (
@@ -187,7 +243,7 @@ export default function BudgetManagement() {
                       <TableHead className="text-right">Dotação</TableHead>
                       <TableHead className="text-right">Empenhado</TableHead>
                       <TableHead className="text-right">Pago</TableHead>
-                      <TableHead className="text-center w-[100px]">
+                      <TableHead className="text-center w-[120px]">
                         Ações
                       </TableHead>
                     </TableRow>
@@ -196,26 +252,37 @@ export default function BudgetManagement() {
                     {entries.map((entry) => (
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium text-xs md:text-sm">
-                          {getDeptName(entry.department)}
+                          {getDeptName(entry.department).split(' - ')[1] ||
+                            entry.department}
                         </TableCell>
                         <TableCell className="text-xs md:text-sm">
-                          {getProgName(entry.program)}
+                          {getProgName(entry.program).split(' - ')[1] ||
+                            entry.program}
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
-                          {formatCurrency(entry.dotation)}
+                          {formatBRL(entry.dotation)}
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
-                          {formatCurrency(entry.committed)}
+                          {formatBRL(entry.committed)}
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
-                          {formatCurrency(entry.paid)}
+                          {formatBRL(entry.paid)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setHistoryEntryId(entry.id)}
+                              title="Histórico"
+                            >
+                              <History className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => setEditingEntry(entry)}
+                              title="Editar"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -224,6 +291,7 @@ export default function BudgetManagement() {
                               size="icon"
                               className="text-destructive hover:text-destructive"
                               onClick={() => setDeletingId(entry.id)}
+                              title="Excluir"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -266,6 +334,12 @@ export default function BudgetManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      <BudgetHistorySheet
+        entryId={historyEntryId}
+        isOpen={!!historyEntryId}
+        onClose={() => setHistoryEntryId(null)}
+      />
 
       <AlertDialog
         open={!!deletingId}
