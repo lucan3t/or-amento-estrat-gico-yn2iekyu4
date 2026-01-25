@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
 import { useEffect } from 'react'
+import { formatCurrency, parseCurrency } from '@/lib/utils'
 
 const budgetSchema = z.object({
   orgao: z.string().min(1, 'Selecione um órgão'),
@@ -53,29 +54,45 @@ export function BudgetForm({
     defaultValues: {
       orgao: '',
       programa: '',
-      dotacao: '',
-      empenhado: '',
-      liquidado: '',
-      pago: '',
-      reservado: '',
+      dotacao: '0,00',
+      empenhado: '0,00',
+      liquidado: '0,00',
+      pago: '0,00',
+      reservado: '0,00',
     },
   })
 
   // Update form when initialData changes
   useEffect(() => {
     if (initialData) {
-      form.reset(initialData)
+      form.reset({
+        ...initialData,
+        dotacao: formatCurrency(initialData.dotacao),
+        empenhado: formatCurrency(initialData.empenhado),
+        liquidado: formatCurrency(initialData.liquidado),
+        pago: formatCurrency(initialData.pago),
+        reservado: formatCurrency(initialData.reservado),
+      })
     }
   }, [initialData, form])
 
   const calculateDisponivel = () => {
-    const dotacao = Number(form.watch('dotacao')) || 0
-    const empenhado = Number(form.watch('empenhado')) || 0
-    const reservado = Number(form.watch('reservado')) || 0
+    const dotacao = parseCurrency(form.watch('dotacao')) || 0
+    const empenhado = parseCurrency(form.watch('empenhado')) || 0
+    const reservado = parseCurrency(form.watch('reservado')) || 0
     return dotacao - empenhado - reservado
   }
 
   const disponivel = calculateDisponivel()
+
+  const handleAmountChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    onChange: (value: string) => void,
+  ) => {
+    const value = e.target.value.replace(/\D/g, '')
+    const formatted = formatCurrency(Number(value) / 100)
+    onChange(formatted)
+  }
 
   return (
     <Form {...form}>
@@ -147,7 +164,12 @@ export function BudgetForm({
               <FormItem>
                 <FormLabel>Dotação (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="0.00" {...field} />
+                  <Input
+                    type="text"
+                    placeholder="0,00"
+                    {...field}
+                    onChange={(e) => handleAmountChange(e, field.onChange)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -160,7 +182,12 @@ export function BudgetForm({
               <FormItem>
                 <FormLabel>Reservado (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="0.00" {...field} />
+                  <Input
+                    type="text"
+                    placeholder="0,00"
+                    {...field}
+                    onChange={(e) => handleAmountChange(e, field.onChange)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -173,7 +200,12 @@ export function BudgetForm({
               <FormItem>
                 <FormLabel>Empenhado (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="0.00" {...field} />
+                  <Input
+                    type="text"
+                    placeholder="0,00"
+                    {...field}
+                    onChange={(e) => handleAmountChange(e, field.onChange)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -186,7 +218,12 @@ export function BudgetForm({
               <FormItem>
                 <FormLabel>Liquidado (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="0.00" {...field} />
+                  <Input
+                    type="text"
+                    placeholder="0,00"
+                    {...field}
+                    onChange={(e) => handleAmountChange(e, field.onChange)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -199,7 +236,12 @@ export function BudgetForm({
               <FormItem>
                 <FormLabel>Pago (R$)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="0.00" {...field} />
+                  <Input
+                    type="text"
+                    placeholder="0,00"
+                    {...field}
+                    onChange={(e) => handleAmountChange(e, field.onChange)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

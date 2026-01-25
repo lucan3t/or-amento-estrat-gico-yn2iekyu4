@@ -26,7 +26,7 @@ export type Database = {
           paid: number
           program: string
           reserved: number
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           committed?: number
@@ -38,7 +38,7 @@ export type Database = {
           paid?: number
           program: string
           reserved?: number
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           committed?: number
@@ -50,7 +50,7 @@ export type Database = {
           paid?: number
           program?: string
           reserved?: number
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }

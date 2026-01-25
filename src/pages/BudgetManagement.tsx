@@ -42,6 +42,7 @@ import {
 } from '@/services/budget'
 import { BudgetForm, BudgetFormValues } from '@/components/BudgetForm'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
+import { parseCurrency } from '@/lib/utils'
 
 export default function BudgetManagement() {
   const [entries, setEntries] = useState<BudgetEntry[]>([])
@@ -72,11 +73,11 @@ export default function BudgetManagement() {
       await createBudgetEntry({
         department: data.orgao,
         program: data.programa,
-        dotation: Number(data.dotacao),
-        committed: Number(data.empenhado),
-        liquidated: Number(data.liquidado),
-        paid: Number(data.pago),
-        reserved: Number(data.reservado),
+        dotation: parseCurrency(data.dotacao),
+        committed: parseCurrency(data.empenhado),
+        liquidated: parseCurrency(data.liquidado),
+        paid: parseCurrency(data.pago),
+        reserved: parseCurrency(data.reservado),
       })
       toast.success('Registro criado com sucesso!')
       fetchEntries()
@@ -97,11 +98,11 @@ export default function BudgetManagement() {
       await updateBudgetEntry(editingEntry.id, {
         department: data.orgao,
         program: data.programa,
-        dotation: Number(data.dotacao),
-        committed: Number(data.empenhado),
-        liquidated: Number(data.liquidado),
-        paid: Number(data.pago),
-        reserved: Number(data.reservado),
+        dotation: parseCurrency(data.dotacao),
+        committed: parseCurrency(data.empenhado),
+        liquidated: parseCurrency(data.liquidado),
+        paid: parseCurrency(data.pago),
+        reserved: parseCurrency(data.reservado),
       })
       toast.success('Registro atualizado com sucesso!')
       setEditingEntry(null)
