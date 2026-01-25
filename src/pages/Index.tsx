@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Card,
   CardContent,
@@ -54,10 +54,29 @@ export default function Index() {
   const [evolutionData, setEvolutionData] = useState<any[]>([])
 
   // Prepare Department Options for MultiSelect
-  const deptOptions: Option[] = DEPARTMENTS.map((d) => ({
-    label: d.name,
-    value: d.id,
-  }))
+  // Memoized to prevent unnecessary re-renders of MultiSelect
+  const deptOptions = useMemo<Option[]>(
+    () =>
+      DEPARTMENTS.map((d) => ({
+        label: d.name,
+        value: d.id,
+      })),
+    [],
+  )
+
+  // Callback for date range filter to prevent infinite re-render loops
+  const handleDateRangeChange = useCallback((start: Date, end: Date) => {
+    setDateRange((prev) => {
+      // Only update state if dates actually changed to prevent render cycles
+      if (
+        prev.start?.getTime() === start.getTime() &&
+        prev.end?.getTime() === end.getTime()
+      ) {
+        return prev
+      }
+      return { start, end }
+    })
+  }, [])
 
   useEffect(() => {
     async function fetchData() {
@@ -182,7 +201,7 @@ export default function Index() {
         <div className="w-full pb-2 border-b mb-2">
           <h3 className="text-sm font-semibold mb-3">Filtros de Período</h3>
           <DateRangeFilter
-            onFilterChange={(start, end) => setDateRange({ start, end })}
+            onFilterChange={handleDateRangeChange}
             className="w-full"
           />
         </div>

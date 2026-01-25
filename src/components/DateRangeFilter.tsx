@@ -57,6 +57,11 @@ export function DateRangeFilter({
     to: endOfYear(new Date()),
   })
 
+  // Track last emitted values to avoid loops
+  const lastEmittedRange = React.useRef<{ start: number; end: number } | null>(
+    null,
+  )
+
   // Generate year options (last 3 years + next year)
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) =>
@@ -113,13 +118,28 @@ export function DateRangeFilter({
     const y = parseInt(year)
     const p = parseInt(period)
 
+    // Helper to emit changes safely
+    const safeEmit = (s: Date, e: Date) => {
+      const sTime = s.getTime()
+      const eTime = e.getTime()
+
+      if (
+        !lastEmittedRange.current ||
+        lastEmittedRange.current.start !== sTime ||
+        lastEmittedRange.current.end !== eTime
+      ) {
+        lastEmittedRange.current = { start: sTime, end: eTime }
+        onFilterChange(s, e)
+      }
+    }
+
     if (frequency === 'custom') {
       if (customDate?.from) {
         start = startOfDay(customDate.from)
         end = customDate.to
           ? endOfDay(customDate.to)
           : endOfDay(customDate.from)
-        onFilterChange(start, end)
+        safeEmit(start, end)
       }
       return
     }
@@ -154,7 +174,7 @@ export function DateRangeFilter({
         end = endOfYear(new Date(y, 0, 1))
     }
 
-    onFilterChange(startOfDay(start), endOfDay(end))
+    safeEmit(startOfDay(start), endOfDay(end))
   }, [frequency, year, period, customDate, onFilterChange])
 
   return (
