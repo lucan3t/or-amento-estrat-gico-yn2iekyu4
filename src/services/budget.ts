@@ -3,7 +3,7 @@ import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
 
 export interface BudgetEntry {
   id: string
-  user_id: string
+  user_id: string | null
   department: string
   program: string
   dotation: number
@@ -17,17 +17,14 @@ export interface BudgetEntry {
 export const createBudgetEntry = async (
   entry: Omit<BudgetEntry, 'id' | 'user_id' | 'created_at'>,
 ) => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) throw new Error('User not authenticated')
-
+  // Authentication check removed for public access
   const { data, error } = await supabase
     .from('budget_entries')
     .insert({
       ...entry,
-      user_id: user.id,
-    })
+      // We explicitly cast to any to bypass the type definition which might still expect user_id as mandatory string
+      // caused by static types generation not being in sync with the new migration yet
+    } as any)
     .select()
     .single()
 

@@ -1,4 +1,4 @@
-import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard,
   Wallet,
@@ -6,8 +6,6 @@ import {
   BarChart3,
   Search,
   Bell,
-  User,
-  LogOut,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -23,21 +21,6 @@ import {
 } from '@/components/ui/sidebar'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useAuth } from '@/hooks/use-auth'
 
 const NAV_ITEMS = [
   {
@@ -64,39 +47,10 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   const location = useLocation()
-  const { user, signOut } = useAuth()
-  const navigate = useNavigate()
-
-  const handleSignOut = async () => {
-    try {
-      await signOut()
-      navigate('/login')
-    } catch (error) {
-      console.error('Logout error:', error)
-      navigate('/login')
-    }
-  }
 
   const getPageTitle = () => {
     const item = NAV_ITEMS.find((nav) => nav.url === location.pathname)
     return item ? item.title : 'Orçamento Estratégico'
-  }
-
-  const getUserInitials = () => {
-    const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name
-
-    if (fullName) {
-      const names = fullName.trim().split(/\s+/)
-      if (names.length >= 2) {
-        return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
-      }
-      return fullName.substring(0, 2).toUpperCase()
-    }
-
-    if (user?.email) {
-      return user.email.substring(0, 2).toUpperCase()
-    }
-    return 'GO'
   }
 
   return (
@@ -133,35 +87,10 @@ export default function Layout() {
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border/50 p-4">
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-            <Avatar className="size-8">
-              <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-bold">
-                {getUserInitials()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-1 items-center justify-between overflow-hidden group-data-[collapsible=icon]:hidden">
-              <div className="grid text-left text-sm leading-tight truncate mr-2">
-                <span className="truncate font-semibold">
-                  {user?.email?.split('@')[0]}
-                </span>
-                <span className="truncate text-xs text-sidebar-foreground/70">
-                  Gestor
-                </span>
-              </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSignOut}
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-                    title="Sair"
-                  >
-                    <LogOut className="size-4" />
-                    <span className="sr-only">Sair</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Sair</TooltipContent>
-              </Tooltip>
+            <div className="text-xs text-muted-foreground text-center w-full">
+              <span className="group-data-[collapsible=icon]:hidden">
+                Versão Pública v1.2
+              </span>
             </div>
           </div>
         </SidebarFooter>
@@ -186,24 +115,6 @@ export default function Layout() {
                 <Bell className="h-5 w-5" />
                 <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-danger border-2 border-background" />
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <User className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleSignOut}
-                    className="text-danger focus:text-danger cursor-pointer"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sair</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </header>
@@ -212,7 +123,8 @@ export default function Layout() {
         </main>
         <footer className="border-t py-4 px-6 text-center text-xs text-muted-foreground bg-muted/30">
           <p>
-            © 2026 Orçamento Estratégico. v1.1.0. Todos os direitos reservados.
+            © 2026 Orçamento Estratégico. v1.2.0 (Public). Todos os direitos
+            reservados.
           </p>
         </footer>
       </SidebarInset>
