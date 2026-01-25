@@ -190,8 +190,12 @@ export const getDepartmentPerformanceData = async (
     .sort((a, b) => b.executionRate - a.executionRate)
 }
 
-export const getProgramPerformanceData = async () => {
-  const entries = await getBudgetEntries()
+export const getProgramPerformanceData = async (
+  startDate?: Date,
+  endDate?: Date,
+  departmentId?: string,
+) => {
+  const entries = await getBudgetEntries(startDate, endDate, departmentId)
   const progMap = new Map<string, { dotacao: number; pago: number }>()
 
   PROGRAMS.forEach((p) => {
