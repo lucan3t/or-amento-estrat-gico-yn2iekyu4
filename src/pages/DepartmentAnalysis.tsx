@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -13,7 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getDepartmentPerformanceData } from '@/services/budget'
+import {
+  getDepartmentPerformanceData,
+  getAvailableYears,
+  getAvailableDepartments,
+} from '@/services/budget'
 import {
   ChartContainer,
   ChartTooltip,
@@ -23,27 +27,69 @@ import {
 } from '@/components/ui/chart'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Loader2 } from 'lucide-react'
-import { DateRangeFilter } from '@/components/DateRangeFilter'
+import { Label } from '@/components/ui/label'
+import { DEPARTMENTS } from '@/lib/constants'
+import { startOfYear, endOfYear } from 'date-fns'
+import { formatCurrency } from '@/lib/utils'
 
 export default function DepartmentAnalysis() {
   const [focusDept, setFocusDept] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [deptData, setDeptData] = useState<any[]>([])
 
-  const handleFilterChange = useCallback(
-    async (startDate: Date, endDate: Date) => {
+  // Filter states
+  const [years, setYears] = useState<number[]>([])
+  const [deptOptions, setDeptOptions] = useState<string[]>([])
+  const [selectedYear, setSelectedYear] = useState<string>('')
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('all')
+
+  // Load filter options
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const [availableYears, availableDepts] = await Promise.all([
+          getAvailableYears(),
+          getAvailableDepartments(),
+        ])
+        setYears(availableYears)
+        setDeptOptions(availableDepts)
+
+        if (availableYears.length > 0) {
+          setSelectedYear(availableYears[0].toString())
+        }
+      } catch (error) {
+        console.error('Error loading filter options:', error)
+      }
+    }
+    loadOptions()
+  }, [])
+
+  // Load dashboard data
+  useEffect(() => {
+    if (!selectedYear) return
+
+    const loadData = async () => {
       try {
         setLoading(true)
-        const data = await getDepartmentPerformanceData(startDate, endDate)
+        const year = parseInt(selectedYear)
+        const startDate = startOfYear(new Date(year, 0, 1))
+        const endDate = endOfYear(new Date(year, 0, 1))
+
+        const data = await getDepartmentPerformanceData(
+          startDate,
+          endDate,
+          selectedDeptFilter,
+        )
         setDeptData(data)
+        setFocusDept('') // Reset detailed view on filter change
       } catch (error) {
-        console.error(error)
+        console.error('Error loading dashboard data:', error)
       } finally {
         setLoading(false)
       }
-    },
-    [],
-  )
+    }
+    loadData()
+  }, [selectedYear, selectedDeptFilter])
 
   const chartConfig = {
     dotacao: { label: 'Dotação', color: 'hsl(var(--muted-foreground))' },
@@ -55,14 +101,51 @@ export default function DepartmentAnalysis() {
     ? deptData.find((d) => d.id === focusDept)
     : deptData[0]
 
+  const getDeptLabel = (id: string) => {
+    const dept = DEPARTMENTS.find((d) => d.id === id)
+    return dept ? dept.name : id
+  }
+
   return (
     <div className="space-y-6">
-      {/* Advanced Filters - Removing Eixo Institucional as requested */}
-      <div className="bg-card p-4 rounded-lg shadow-sm border">
-        <DateRangeFilter
-          onFilterChange={handleFilterChange}
-          className="w-full"
-        />
+      <div className="bg-card p-4 rounded-lg shadow-sm border grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label className="text-muted-foreground">
+            Filtrar por Órgão Responsável
+          </Label>
+          <Select
+            value={selectedDeptFilter}
+            onValueChange={setSelectedDeptFilter}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Selecione o órgão" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Órgãos</SelectItem>
+              {deptOptions.map((deptId) => (
+                <SelectItem key={deptId} value={deptId}>
+                  {getDeptLabel(deptId)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-muted-foreground">Período de Análise</Label>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Selecione o ano" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  Exercício {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {loading ? (
@@ -82,7 +165,8 @@ export default function DepartmentAnalysis() {
               <CardHeader>
                 <CardTitle>Comparativo Financeiro</CardTitle>
                 <CardDescription>
-                  Análise de Dotação vs Empenhado vs Pago por Órgão
+                  Análise de Dotação vs Empenhado vs Pago por Órgão (
+                  {selectedYear})
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -117,7 +201,13 @@ export default function DepartmentAnalysis() {
                         width={60}
                         tick={{ fontSize: 10 }}
                       />
-                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartTooltip
+                        content={
+                          <ChartTooltipContent
+                            formatter={(value) => formatCurrency(value)}
+                          />
+                        }
+                      />
                       <ChartLegend content={<ChartLegendContent />} />
                       <Bar
                         dataKey="dotacao"

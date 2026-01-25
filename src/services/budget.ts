@@ -32,7 +32,6 @@ export const updateBudgetEntry = async (
   id: string,
   entry: Partial<Omit<BudgetEntry, 'id' | 'user_id' | 'created_at'>>,
 ) => {
-  // 1. Fetch current data for history tracking
   const { data: oldEntry, error: fetchError } = await supabase
     .from('budget_entries')
     .select('*')
@@ -41,7 +40,6 @@ export const updateBudgetEntry = async (
 
   if (fetchError) throw fetchError
 
-  // 2. Perform the update
   const { error } = await supabase
     .from('budget_entries')
     .update(entry)
@@ -49,7 +47,6 @@ export const updateBudgetEntry = async (
 
   if (error) throw error
 
-  // 3. Log changes to history
   if (oldEntry) {
     const promises = Object.keys(entry).map((key) => {
       const fieldKey = key as keyof typeof entry
@@ -70,7 +67,36 @@ export const deleteBudgetEntry = async (id: string) => {
   if (error) throw error
 }
 
-export const getBudgetEntries = async (startDate?: Date, endDate?: Date) => {
+export const getAvailableYears = async () => {
+  const { data, error } = await supabase
+    .from('budget_entries')
+    .select('created_at')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  const years = Array.from(
+    new Set(data.map((item) => new Date(item.created_at).getFullYear())),
+  )
+  return years.sort((a, b) => b - a)
+}
+
+export const getAvailableDepartments = async () => {
+  const { data, error } = await supabase
+    .from('budget_entries')
+    .select('department')
+
+  if (error) throw error
+
+  const departments = Array.from(new Set(data.map((item) => item.department)))
+  return departments.sort()
+}
+
+export const getBudgetEntries = async (
+  startDate?: Date,
+  endDate?: Date,
+  departmentId?: string,
+) => {
   let query = supabase
     .from('budget_entries')
     .select('*')
@@ -82,6 +108,10 @@ export const getBudgetEntries = async (startDate?: Date, endDate?: Date) => {
 
   if (endDate) {
     query = query.lte('created_at', endDate.toISOString())
+  }
+
+  if (departmentId && departmentId !== 'all') {
+    query = query.eq('department', departmentId)
   }
 
   const { data, error } = await query
@@ -96,7 +126,7 @@ export const getAggregatedSummary = async () => {
   const initialSummary = {
     dotacao: 0,
     empenhado: 0,
-    liquidado: 0,
+    liquidated: 0,
     pago: 0,
     reservado: 0,
     disponivel: 0,
@@ -119,8 +149,9 @@ export const getAggregatedSummary = async () => {
 export const getDepartmentPerformanceData = async (
   startDate?: Date,
   endDate?: Date,
+  departmentId?: string,
 ) => {
-  const entries = await getBudgetEntries(startDate, endDate)
+  const entries = await getBudgetEntries(startDate, endDate, departmentId)
   const deptMap = new Map<
     string,
     { dotacao: number; empenhado: number; pago: number }
