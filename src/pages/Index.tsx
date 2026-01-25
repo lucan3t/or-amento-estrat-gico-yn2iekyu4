@@ -73,13 +73,16 @@ export default function Index() {
   }, [selectedDept, selectedProg])
 
   const formatCurrency = (value: number) => {
+    // Handle NaN/Invalid values gracefully
+    const safeValue = isNaN(value) ? 0 : value
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(value)
+    }).format(safeValue)
   }
 
   const getStatusColor = (percentage: number) => {
+    if (isNaN(percentage)) return 'text-muted-foreground bg-muted'
     if (percentage > 70) return 'text-success bg-success/10 border-success/20'
     if (percentage >= 40) return 'text-warning bg-warning/10 border-warning/20'
     return 'text-danger bg-danger/10 border-danger/20 animate-pulse-slow'
@@ -236,7 +239,7 @@ export default function Index() {
                     getStatusColor(card.percentage),
                   )}
                 >
-                  {card.percentage.toFixed(1)}%
+                  {isNaN(card.percentage) ? '0.0' : card.percentage.toFixed(1)}%
                 </div>
               )}
             </CardContent>

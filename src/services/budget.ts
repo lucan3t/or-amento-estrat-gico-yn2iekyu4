@@ -146,11 +146,11 @@ export const getAggregatedSummary = async (
   }
 
   const summary = entries.reduce((acc, curr) => {
-    acc.dotacao += curr.dotation
-    acc.empenhado += curr.committed
-    acc.liquidated += curr.liquidated
-    acc.pago += curr.paid
-    acc.reservado += curr.reserved
+    acc.dotacao += Number(curr.dotation || 0)
+    acc.empenhado += Number(curr.committed || 0)
+    acc.liquidated += Number(curr.liquidated || 0)
+    acc.pago += Number(curr.paid || 0)
+    acc.reservado += Number(curr.reserved || 0)
     return acc
   }, initialSummary)
 
@@ -188,10 +188,10 @@ export const getDepartmentPerformanceData = async (
       pago: 0,
     }
     deptMap.set(entry.department, {
-      dotacao: current.dotacao + entry.dotation,
-      empenhado: current.empenhado + entry.committed,
-      liquidado: current.liquidado + entry.liquidated,
-      pago: current.pago + entry.paid,
+      dotacao: current.dotacao + Number(entry.dotation || 0),
+      empenhado: current.empenhado + Number(entry.committed || 0),
+      liquidado: current.liquidado + Number(entry.liquidated || 0),
+      pago: current.pago + Number(entry.paid || 0),
     })
   })
 
@@ -232,8 +232,8 @@ export const getProgramPerformanceData = async (
   entries.forEach((entry) => {
     const current = progMap.get(entry.program) || { dotacao: 0, pago: 0 }
     progMap.set(entry.program, {
-      dotacao: current.dotacao + entry.dotation,
-      pago: current.pago + entry.paid,
+      dotacao: current.dotacao + Number(entry.dotation || 0),
+      pago: current.pago + Number(entry.paid || 0),
     })
   })
 
@@ -277,8 +277,8 @@ export const getEvolutionChartData = async (
     const date = new Date(entry.created_at)
     if (date.getFullYear() === currentYear) {
       const monthIndex = date.getMonth()
-      monthsData[monthIndex].dotacao += Number(entry.dotation)
-      monthsData[monthIndex].liquidado += Number(entry.liquidated)
+      monthsData[monthIndex].dotacao += Number(entry.dotation || 0)
+      monthsData[monthIndex].liquidado += Number(entry.liquidated || 0)
     }
   })
 
