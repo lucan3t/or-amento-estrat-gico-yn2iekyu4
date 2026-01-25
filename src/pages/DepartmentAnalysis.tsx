@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/select'
 import {
   getDepartmentPerformanceData,
-  getAvailableYears,
   getAvailableDepartments,
 } from '@/services/budget'
 import {
@@ -29,8 +28,8 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Loader2 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { DEPARTMENTS } from '@/lib/constants'
-import { startOfYear, endOfYear } from 'date-fns'
 import { formatCurrency } from '@/lib/utils'
+import { DateRangeFilter } from '@/components/DateRangeFilter'
 
 export default function DepartmentAnalysis() {
   const [focusDept, setFocusDept] = useState<string>('')
@@ -38,25 +37,18 @@ export default function DepartmentAnalysis() {
   const [deptData, setDeptData] = useState<any[]>([])
 
   // Filter states
-  const [years, setYears] = useState<number[]>([])
   const [deptOptions, setDeptOptions] = useState<string[]>([])
-  const [selectedYear, setSelectedYear] = useState<string>('')
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('all')
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(
+    null,
+  )
 
   // Load filter options
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [availableYears, availableDepts] = await Promise.all([
-          getAvailableYears(),
-          getAvailableDepartments(),
-        ])
-        setYears(availableYears)
+        const availableDepts = await getAvailableDepartments()
         setDeptOptions(availableDepts)
-
-        if (availableYears.length > 0) {
-          setSelectedYear(availableYears[0].toString())
-        }
       } catch (error) {
         console.error('Error loading filter options:', error)
       }
@@ -64,20 +56,22 @@ export default function DepartmentAnalysis() {
     loadOptions()
   }, [])
 
+  // Handle Date Range Change
+  const handleDateRangeChange = useCallback((start: Date, end: Date) => {
+    setDateRange({ start, end })
+  }, [])
+
   // Load dashboard data
   useEffect(() => {
-    if (!selectedYear) return
+    if (!dateRange) return
 
     const loadData = async () => {
       try {
         setLoading(true)
-        const year = parseInt(selectedYear)
-        const startDate = startOfYear(new Date(year, 0, 1))
-        const endDate = endOfYear(new Date(year, 0, 1))
 
         const data = await getDepartmentPerformanceData(
-          startDate,
-          endDate,
+          dateRange.start,
+          dateRange.end,
           selectedDeptFilter,
         )
         setDeptData(data)
@@ -89,12 +83,11 @@ export default function DepartmentAnalysis() {
       }
     }
     loadData()
-  }, [selectedYear, selectedDeptFilter])
+  }, [dateRange, selectedDeptFilter])
 
   const chartConfig = {
     dotacao: { label: 'Dotação', color: 'hsl(var(--muted-foreground))' },
-    empenhado: { label: 'Empenhado', color: 'hsl(var(--primary))' },
-    pago: { label: 'Pago', color: 'hsl(var(--success))' },
+    liquidado: { label: 'Liquidado', color: 'hsl(var(--primary))' },
   }
 
   const focusDeptData = focusDept
@@ -133,18 +126,10 @@ export default function DepartmentAnalysis() {
 
         <div className="space-y-2">
           <Label className="text-muted-foreground">Período de Análise</Label>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione o ano" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  Exercício {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DateRangeFilter
+            onFilterChange={handleDateRangeChange}
+            className="w-full"
+          />
         </div>
       </div>
 
@@ -165,8 +150,7 @@ export default function DepartmentAnalysis() {
               <CardHeader>
                 <CardTitle>Comparativo Financeiro</CardTitle>
                 <CardDescription>
-                  Análise de Dotação vs Empenhado vs Pago por Órgão (
-                  {selectedYear})
+                  Análise de Dotação vs Liquidado por Órgão
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -202,6 +186,7 @@ export default function DepartmentAnalysis() {
                         tick={{ fontSize: 10 }}
                       />
                       <ChartTooltip
+                        cursor={false}
                         content={
                           <ChartTooltipContent
                             formatter={(value) => formatCurrency(value)}
@@ -215,13 +200,8 @@ export default function DepartmentAnalysis() {
                         radius={[4, 4, 0, 0]}
                       />
                       <Bar
-                        dataKey="empenhado"
-                        fill="var(--color-empenhado)"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="pago"
-                        fill="var(--color-pago)"
+                        dataKey="liquidado"
+                        fill="var(--color-liquidado)"
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
@@ -266,13 +246,13 @@ export default function DepartmentAnalysis() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm opacity-70">Execução</p>
+                        <p className="text-sm opacity-70">Execução (Liq/Dot)</p>
                         <p className="text-2xl font-bold">
                           {focusDeptData.executionRate.toFixed(1)}%
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm opacity-70">Gap</p>
+                        <p className="text-sm opacity-70">Disponível</p>
                         <p className="text-2xl font-bold opacity-80">
                           {(100 - focusDeptData.executionRate).toFixed(1)}%
                         </p>
@@ -289,8 +269,8 @@ export default function DepartmentAnalysis() {
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
                 {focusDeptData && focusDeptData.executionRate > 70
-                  ? 'Este órgão apresenta um excelente ritmo de execução orçamentária, superando a meta trimestral.'
-                  : 'Atenção: A execução orçamentária está abaixo do esperado para o período. Recomenda-se revisão dos processos de empenho.'}
+                  ? 'Este órgão apresenta um excelente ritmo de execução orçamentária (liquidação), superando a meta.'
+                  : 'Atenção: A execução orçamentária (liquidação) está abaixo do esperado para o período. Recomenda-se revisão dos processos.'}
               </CardContent>
             </Card>
           </div>
