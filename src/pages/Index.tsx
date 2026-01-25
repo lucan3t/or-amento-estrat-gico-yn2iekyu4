@@ -51,9 +51,14 @@ export default function Index() {
       try {
         setLoading(true)
         const [sum, dept, evol] = await Promise.all([
-          getAggregatedSummary(),
-          getDepartmentPerformanceData(),
-          getEvolutionChartData(),
+          getAggregatedSummary(selectedDept, selectedProg),
+          getDepartmentPerformanceData(
+            undefined,
+            undefined,
+            selectedDept,
+            selectedProg,
+          ),
+          getEvolutionChartData(selectedDept, selectedProg),
         ])
         setSummary(sum)
         setDeptPerformance(dept)
@@ -65,7 +70,7 @@ export default function Index() {
       }
     }
     fetchData()
-  }, [])
+  }, [selectedDept, selectedProg])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -81,13 +86,13 @@ export default function Index() {
   }
 
   const chartConfig = {
-    pago: {
-      label: 'Pago',
-      color: 'hsl(var(--success))',
-    },
-    empenhado: {
-      label: 'Empenhado',
+    dotacao: {
+      label: 'Dotação',
       color: 'hsl(var(--primary))',
+    },
+    liquidado: {
+      label: 'Liquidado',
+      color: 'hsl(var(--success))',
     },
     executionRate: {
       label: 'Liquidado vs Dotação',
@@ -107,7 +112,7 @@ export default function Index() {
   }
 
   // Handle empty state
-  if (!summary || summary.dotacao === 0) {
+  if (!summary || (summary.dotacao === 0 && selectedDept === 'all')) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center p-8 bg-muted/20 rounded-lg border-2 border-dashed">
         <h2 className="text-2xl font-semibold mb-2">Sem dados orçamentários</h2>
@@ -311,7 +316,7 @@ export default function Index() {
                   >
                     <defs>
                       <linearGradient
-                        id="fillEmpenhado"
+                        id="fillDotacao"
                         x1="0"
                         y1="0"
                         x2="0"
@@ -319,24 +324,30 @@ export default function Index() {
                       >
                         <stop
                           offset="5%"
-                          stopColor="var(--color-empenhado)"
+                          stopColor="var(--color-dotacao)"
                           stopOpacity={0.3}
                         />
                         <stop
                           offset="95%"
-                          stopColor="var(--color-empenhado)"
+                          stopColor="var(--color-dotacao)"
                           stopOpacity={0.0}
                         />
                       </linearGradient>
-                      <linearGradient id="fillPago" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient
+                        id="fillLiquidado"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
                         <stop
                           offset="5%"
-                          stopColor="var(--color-pago)"
+                          stopColor="var(--color-liquidado)"
                           stopOpacity={0.4}
                         />
                         <stop
                           offset="95%"
-                          stopColor="var(--color-pago)"
+                          stopColor="var(--color-liquidado)"
                           stopOpacity={0.05}
                         />
                       </linearGradient>
@@ -363,23 +374,33 @@ export default function Index() {
                       tick={{ fontSize: 11 }}
                     />
                     <ChartTooltip
-                      content={<ChartTooltipContent indicator="dot" />}
+                      content={
+                        <ChartTooltipContent
+                          indicator="dot"
+                          formatter={(value) =>
+                            new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(Number(value))
+                          }
+                        />
+                      }
                     />
                     <ChartLegend content={<ChartLegendContent />} />
                     <Area
-                      dataKey="empenhado"
+                      dataKey="dotacao"
                       type="natural"
-                      fill="url(#fillEmpenhado)"
+                      fill="url(#fillDotacao)"
                       fillOpacity={0.4}
-                      stroke="var(--color-empenhado)"
+                      stroke="var(--color-dotacao)"
                       stackId="a"
                     />
                     <Area
-                      dataKey="pago"
+                      dataKey="liquidado"
                       type="natural"
-                      fill="url(#fillPago)"
+                      fill="url(#fillLiquidado)"
                       fillOpacity={0.4}
-                      stroke="var(--color-pago)"
+                      stroke="var(--color-liquidado)"
                       stackId="b"
                     />
                   </AreaChart>

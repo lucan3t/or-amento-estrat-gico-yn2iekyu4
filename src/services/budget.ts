@@ -96,6 +96,7 @@ export const getBudgetEntries = async (
   startDate?: Date,
   endDate?: Date,
   departmentId?: string,
+  programId?: string,
 ) => {
   let query = supabase
     .from('budget_entries')
@@ -114,14 +115,26 @@ export const getBudgetEntries = async (
     query = query.eq('department', departmentId)
   }
 
+  if (programId && programId !== 'all') {
+    query = query.eq('program', programId)
+  }
+
   const { data, error } = await query
 
   if (error) throw error
   return data as BudgetEntry[]
 }
 
-export const getAggregatedSummary = async () => {
-  const entries = await getBudgetEntries()
+export const getAggregatedSummary = async (
+  departmentId?: string,
+  programId?: string,
+) => {
+  const entries = await getBudgetEntries(
+    undefined,
+    undefined,
+    departmentId,
+    programId,
+  )
 
   const initialSummary = {
     dotacao: 0,
@@ -150,8 +163,14 @@ export const getDepartmentPerformanceData = async (
   startDate?: Date,
   endDate?: Date,
   departmentId?: string,
+  programId?: string,
 ) => {
-  const entries = await getBudgetEntries(startDate, endDate, departmentId)
+  const entries = await getBudgetEntries(
+    startDate,
+    endDate,
+    departmentId,
+    programId,
+  )
   const deptMap = new Map<
     string,
     { dotacao: number; empenhado: number; liquidado: number; pago: number }
@@ -196,8 +215,14 @@ export const getProgramPerformanceData = async (
   startDate?: Date,
   endDate?: Date,
   departmentId?: string,
+  programId?: string,
 ) => {
-  const entries = await getBudgetEntries(startDate, endDate, departmentId)
+  const entries = await getBudgetEntries(
+    startDate,
+    endDate,
+    departmentId,
+    programId,
+  )
   const progMap = new Map<string, { dotacao: number; pago: number }>()
 
   PROGRAMS.forEach((p) => {
@@ -228,45 +253,51 @@ export const getProgramPerformanceData = async (
     .sort((a, b) => b.executionRate - a.executionRate)
 }
 
-export const getEvolutionChartData = async () => {
-  const entries = await getBudgetEntries()
-  const monthMap = new Map<string, { empenhado: number; pago: number }>()
+export const getEvolutionChartData = async (
+  departmentId?: string,
+  programId?: string,
+) => {
+  // Use current year
+  const currentYear = new Date().getFullYear()
+  const startOfYear = new Date(currentYear, 0, 1)
+  const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59)
+
+  const entries = await getBudgetEntries(
+    startOfYear,
+    endOfYear,
+    departmentId,
+    programId,
+  )
+
+  const monthsData = Array(12)
+    .fill(0)
+    .map(() => ({ dotacao: 0, liquidado: 0 }))
 
   entries.forEach((entry) => {
     const date = new Date(entry.created_at)
-    const monthKey = date.toLocaleString('default', { month: 'short' })
-    const current = monthMap.get(monthKey) || { empenhado: 0, pago: 0 }
-    monthMap.set(monthKey, {
-      empenhado: current.empenhado + entry.committed,
-      pago: current.pago + entry.paid,
-    })
+    if (date.getFullYear() === currentYear) {
+      const monthIndex = date.getMonth()
+      monthsData[monthIndex].dotacao += Number(entry.dotation)
+      monthsData[monthIndex].liquidado += Number(entry.liquidated)
+    }
   })
 
-  if (monthMap.size === 0) return []
+  let accDotacao = 0
+  let accLiquidado = 0
 
-  const monthsOrderPt = [
-    'jan',
-    'fev',
-    'mar',
-    'abr',
-    'mai',
-    'jun',
-    'jul',
-    'ago',
-    'set',
-    'out',
-    'nov',
-    'dez',
-  ]
+  return monthsData.map((data, index) => {
+    accDotacao += data.dotacao
+    accLiquidado += data.liquidado
 
-  return Array.from(monthMap.entries())
-    .map(([month, values]) => ({
+    const date = new Date(currentYear, index, 1)
+    const month = date
+      .toLocaleString('pt-BR', { month: 'short' })
+      .replace('.', '')
+
+    return {
       month,
-      ...values,
-    }))
-    .sort((a, b) => {
-      const monthA = a.month.toLowerCase().substring(0, 3)
-      const monthB = b.month.toLowerCase().substring(0, 3)
-      return monthsOrderPt.indexOf(monthA) - monthsOrderPt.indexOf(monthB)
-    })
+      dotacao: accDotacao,
+      liquidado: accLiquidado,
+    }
+  })
 }
