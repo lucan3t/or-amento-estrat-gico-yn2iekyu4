@@ -17,7 +17,6 @@ import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
 import {
   getAggregatedSummary,
   getDepartmentPerformanceData,
-  getEvolutionChartData,
   type BudgetSummary,
 } from '@/services/budget'
 import {
@@ -29,12 +28,13 @@ import {
 } from '@/components/ui/chart'
 import {
   Line,
-  LineChart,
   Bar,
   BarChart,
   CartesianGrid,
   XAxis,
   YAxis,
+  ComposedChart,
+  Area,
 } from 'recharts'
 import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
@@ -51,10 +51,8 @@ export default function Index() {
   const [loading, setLoading] = useState(true)
   const [summary, setSummary] = useState<BudgetSummary | null>(null)
   const [deptPerformance, setDeptPerformance] = useState<any[]>([])
-  const [evolutionData, setEvolutionData] = useState<any[]>([])
 
   // Prepare Department Options for MultiSelect
-  // Memoized to prevent unnecessary re-renders of MultiSelect
   const deptOptions = useMemo<Option[]>(
     () =>
       DEPARTMENTS.map((d) => ({
@@ -67,7 +65,6 @@ export default function Index() {
   // Callback for date range filter to prevent infinite re-render loops
   const handleDateRangeChange = useCallback((start: Date, end: Date) => {
     setDateRange((prev) => {
-      // Only update state if dates actually changed to prevent render cycles
       if (
         prev.start?.getTime() === start.getTime() &&
         prev.end?.getTime() === end.getTime()
@@ -80,12 +77,11 @@ export default function Index() {
 
   useEffect(() => {
     async function fetchData() {
-      // Only fetch if dateRange is set (DateRangeFilter will set it immediately on mount)
       if (!dateRange.start || !dateRange.end) return
 
       try {
         setLoading(true)
-        const [sum, dept, evol] = await Promise.all([
+        const [sum, dept] = await Promise.all([
           getAggregatedSummary(
             selectedDeptIds,
             selectedProg,
@@ -98,16 +94,9 @@ export default function Index() {
             selectedDeptIds,
             selectedProg,
           ),
-          getEvolutionChartData(
-            selectedDeptIds,
-            selectedProg,
-            dateRange.start,
-            dateRange.end,
-          ),
         ])
         setSummary(sum)
         setDeptPerformance(dept)
-        setEvolutionData(evol)
       } catch (error) {
         console.error('Failed to fetch dashboard data', error)
       } finally {
@@ -118,7 +107,6 @@ export default function Index() {
   }, [selectedDeptIds, selectedProg, dateRange])
 
   const formatCurrency = (value: number) => {
-    // Handle NaN/Invalid values gracefully
     const safeValue = isNaN(value) ? 0 : value
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -136,11 +124,11 @@ export default function Index() {
   const chartConfig = {
     dotacao: {
       label: 'Dotação',
-      color: '#0f172a', // Slate 900 for dark distinct color
+      color: '#578FCA',
     },
     liquidado: {
       label: 'Liquidado',
-      color: '#22c55e', // Vibrant Green (green-500)
+      color: '#A1E3F9',
     },
     executionRate: {
       label: 'Liquidado vs Dotação',
@@ -193,6 +181,23 @@ export default function Index() {
         },
       ]
     : []
+
+  // Data for "Execução por Órgão" (Top 10 Rate)
+  const topPerformers = useMemo(() => {
+    return [...deptPerformance]
+      .sort((a, b) => b.executionRate - a.executionRate)
+      .slice(0, 10)
+  }, [deptPerformance])
+
+  // Data for "Dotação Atualizada vs Realizado" (Descending Dotacao)
+  const paretoData = useMemo(() => {
+    return [...deptPerformance]
+      .sort((a, b) => b.dotacao - a.dotacao)
+      .map((d) => ({
+        ...d,
+        name: d.name || '(Vazio)',
+      }))
+  }, [deptPerformance])
 
   return (
     <div className="space-y-6">
@@ -311,15 +316,15 @@ export default function Index() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[350px]">
-                  {deptPerformance.length > 0 ? (
+                <div className="h-[400px]">
+                  {topPerformers.length > 0 ? (
                     <ChartContainer
                       config={chartConfig}
                       className="h-full w-full"
                     >
                       <BarChart
                         accessibilityLayer
-                        data={deptPerformance.slice(0, 10)}
+                        data={topPerformers}
                         layout="vertical"
                         margin={{ left: 0, right: 30, top: 0, bottom: 0 }}
                       >
@@ -360,22 +365,24 @@ export default function Index() {
               </CardContent>
             </Card>
 
-            {/* Block 3 - Evolução Geral */}
+            {/* Block 3 - Dotação vs Realizado (New Chart) */}
             <Card className="col-span-1 shadow-sm">
               <CardHeader>
-                <CardTitle>Evolução da Execução</CardTitle>
-                <CardDescription>Acumulado por mês de registro</CardDescription>
+                <CardTitle>Dotação Atualizada vs Realizado</CardTitle>
+                <CardDescription>
+                  Comparativo por área (Ordenado por maior orçamento)
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[350px]">
-                  {evolutionData.length > 0 ? (
+                <div className="h-[400px]">
+                  {paretoData.length > 0 ? (
                     <ChartContainer
                       config={chartConfig}
                       className="h-full w-full"
                     >
-                      <LineChart
-                        data={evolutionData}
-                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                      <ComposedChart
+                        data={paretoData}
+                        margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
                       >
                         <CartesianGrid
                           vertical={false}
@@ -383,26 +390,34 @@ export default function Index() {
                           strokeOpacity={0.5}
                         />
                         <XAxis
-                          dataKey="month"
-                          tickLine={false}
-                          axisLine={false}
-                          tickMargin={8}
+                          dataKey="name"
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          tick={{ fontSize: 10 }}
+                          interval={0}
                         />
                         <YAxis
-                          tickFormatter={(value) =>
-                            `R$${(value / 1000000).toFixed(0)}M`
-                          }
+                          tickFormatter={(value) => {
+                            if (value >= 1e9)
+                              return `R$ ${(value / 1e9)
+                                .toFixed(1)
+                                .replace('.', ',')} bn`
+                            if (value >= 1e6)
+                              return `R$ ${(value / 1e6).toFixed(0)}M`
+                            return `R$ ${value}`
+                          }}
                           tickLine={false}
                           axisLine={false}
                           tickMargin={8}
-                          width={60}
+                          width={65}
                           tick={{ fontSize: 11 }}
                         />
                         <ChartTooltip
-                          cursor={false}
+                          cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                           content={
                             <ChartTooltipContent
-                              indicator="line"
+                              indicator="dot"
                               formatter={(value) =>
                                 new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
@@ -413,27 +428,27 @@ export default function Index() {
                           }
                         />
                         <ChartLegend content={<ChartLegendContent />} />
-                        <Line
-                          dataKey="dotacao"
+                        <Area
                           type="monotone"
+                          dataKey="liquidado"
+                          fill="var(--color-liquidado)"
+                          stroke="var(--color-liquidado)"
+                          fillOpacity={0.6}
+                          name="Liquidado"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="dotacao"
                           stroke="var(--color-dotacao)"
                           strokeWidth={2}
-                          dot={{ r: 4, strokeWidth: 2 }}
-                          activeDot={{ r: 6 }}
+                          dot={{ r: 3, strokeWidth: 2 }}
+                          name="Dotação"
                         />
-                        <Line
-                          dataKey="liquidado"
-                          type="monotone"
-                          stroke="var(--color-liquidado)"
-                          strokeWidth={2}
-                          dot={{ r: 4, strokeWidth: 2 }}
-                          activeDot={{ r: 6 }}
-                        />
-                      </LineChart>
+                      </ComposedChart>
                     </ChartContainer>
                   ) : (
                     <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                      Adicione dados para ver a evolução
+                      Adicione dados para ver o comparativo
                     </div>
                   )}
                 </div>
