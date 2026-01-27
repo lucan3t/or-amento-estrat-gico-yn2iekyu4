@@ -98,8 +98,8 @@ export default function DepartmentAnalysis() {
   const yAxisWidth = isMobile ? 100 : 200
 
   const chartConfig = {
-    dotacao: { label: 'Dotação', color: 'hsl(var(--muted-foreground))' },
-    liquidado: { label: 'Liquidado', color: 'hsl(var(--primary))' },
+    dotacao: { label: 'Dotação', color: '#578FCA' },
+    liquidado: { label: 'Liquidado', color: '#A1E3F9' },
   }
 
   const focusDeptData = focusDept
