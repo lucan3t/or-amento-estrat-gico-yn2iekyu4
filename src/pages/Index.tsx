@@ -28,8 +28,8 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart'
 import {
-  Area,
-  AreaChart,
+  Line,
+  LineChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -136,15 +136,15 @@ export default function Index() {
   const chartConfig = {
     dotacao: {
       label: 'Dotação',
-      color: 'hsl(var(--primary))',
+      color: '#0f172a', // Slate 900 for dark distinct color
     },
     liquidado: {
       label: 'Liquidado',
-      color: 'hsl(var(--success))',
+      color: '#22c55e', // Vibrant Green (green-500)
     },
     executionRate: {
       label: 'Liquidado vs Dotação',
-      color: 'hsl(var(--success))',
+      color: '#22c55e',
     },
   }
 
@@ -373,48 +373,10 @@ export default function Index() {
                       config={chartConfig}
                       className="h-full w-full"
                     >
-                      <AreaChart
+                      <LineChart
                         data={evolutionData}
                         margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                       >
-                        <defs>
-                          <linearGradient
-                            id="fillDotacao"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="5%"
-                              stopColor="var(--color-dotacao)"
-                              stopOpacity={0.3}
-                            />
-                            <stop
-                              offset="95%"
-                              stopColor="var(--color-dotacao)"
-                              stopOpacity={0.0}
-                            />
-                          </linearGradient>
-                          <linearGradient
-                            id="fillLiquidado"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="5%"
-                              stopColor="var(--color-liquidado)"
-                              stopOpacity={0.4}
-                            />
-                            <stop
-                              offset="95%"
-                              stopColor="var(--color-liquidado)"
-                              stopOpacity={0.05}
-                            />
-                          </linearGradient>
-                        </defs>
                         <CartesianGrid
                           vertical={false}
                           strokeDasharray="3 3"
@@ -437,9 +399,10 @@ export default function Index() {
                           tick={{ fontSize: 11 }}
                         />
                         <ChartTooltip
+                          cursor={false}
                           content={
                             <ChartTooltipContent
-                              indicator="dot"
+                              indicator="line"
                               formatter={(value) =>
                                 new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
@@ -450,23 +413,23 @@ export default function Index() {
                           }
                         />
                         <ChartLegend content={<ChartLegendContent />} />
-                        <Area
+                        <Line
                           dataKey="dotacao"
-                          type="natural"
-                          fill="url(#fillDotacao)"
-                          fillOpacity={0.4}
+                          type="monotone"
                           stroke="var(--color-dotacao)"
-                          stackId="a"
+                          strokeWidth={2}
+                          dot={{ r: 4, strokeWidth: 2 }}
+                          activeDot={{ r: 6 }}
                         />
-                        <Area
+                        <Line
                           dataKey="liquidado"
-                          type="natural"
-                          fill="url(#fillLiquidado)"
-                          fillOpacity={0.4}
+                          type="monotone"
                           stroke="var(--color-liquidado)"
-                          stackId="b"
+                          strokeWidth={2}
+                          dot={{ r: 4, strokeWidth: 2 }}
+                          activeDot={{ r: 6 }}
                         />
-                      </AreaChart>
+                      </LineChart>
                     </ChartContainer>
                   ) : (
                     <div className="h-full flex items-center justify-center text-muted-foreground text-sm">

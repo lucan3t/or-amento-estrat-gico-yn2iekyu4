@@ -297,44 +297,70 @@ export const getEvolutionChartData = async (
   endDate?: Date,
 ) => {
   const currentYear = new Date().getFullYear()
-  const start = startDate || new Date(currentYear, 0, 1)
-  const end = endDate || new Date(currentYear, 11, 31, 23, 59, 59)
+  const reqStart = startDate || new Date(currentYear, 0, 1)
+  const reqEnd = endDate || new Date(currentYear, 11, 31, 23, 59, 59)
 
-  const entries = await getBudgetEntries(start, end, departmentIds, programId)
+  // Start calculation from the beginning of the year of the requested start date
+  // This ensures correct accumulation from Jan 1st
+  const calcStart = new Date(reqStart.getFullYear(), 0, 1)
 
+  // We need to fetch data up to reqEnd
+  const entries = await getBudgetEntries(
+    calcStart,
+    reqEnd,
+    departmentIds,
+    programId,
+  )
+
+  // Initialize buckets for the whole calculation period
   const monthsData = new Map<
     string,
-    { dotacao: number; liquidado: number; sortKey: number }
+    {
+      label: string
+      dotacao: number
+      liquidado: number
+      sortKey: number
+      date: Date
+    }
   >()
 
-  const iterDate = new Date(start.getFullYear(), start.getMonth(), 1)
-  const lastDate = new Date(end.getFullYear(), end.getMonth(), 1)
+  // Normalize iterDate to start of month
+  const iterDate = new Date(calcStart.getFullYear(), calcStart.getMonth(), 1)
+  const lastDate = new Date(reqEnd.getFullYear(), reqEnd.getMonth(), 1)
 
-  let loops = 0
-  while (iterDate <= lastDate && loops < 120) {
+  // Create empty buckets for all months in range
+  while (iterDate <= lastDate) {
     const key = iterDate
       .toLocaleString('pt-BR', { month: 'short' })
       .replace('.', '')
     const yearSuffix =
-      start.getFullYear() !== end.getFullYear()
+      reqStart.getFullYear() !== reqEnd.getFullYear()
         ? `/${iterDate.getFullYear().toString().slice(2)}`
         : ''
     const fullKey = key + yearSuffix
 
-    const sortKey = iterDate.getTime()
-    monthsData.set(fullKey, { dotacao: 0, liquidado: 0, sortKey })
+    // Store localized date to match entries
+    monthsData.set(fullKey, {
+      label: fullKey,
+      dotacao: 0,
+      liquidado: 0,
+      sortKey: iterDate.getTime(),
+      date: new Date(iterDate),
+    })
+
+    // Increment month
     iterDate.setMonth(iterDate.getMonth() + 1)
-    loops++
   }
 
+  // Aggregate values into buckets
   entries.forEach((entry) => {
     const date = new Date(entry.created_at)
-    if (date >= start && date <= end) {
+    if (date >= calcStart && date <= reqEnd) {
       const key = date
         .toLocaleString('pt-BR', { month: 'short' })
         .replace('.', '')
       const yearSuffix =
-        start.getFullYear() !== end.getFullYear()
+        reqStart.getFullYear() !== reqEnd.getFullYear()
           ? `/${date.getFullYear().toString().slice(2)}`
           : ''
       const fullKey = key + yearSuffix
@@ -347,19 +373,29 @@ export const getEvolutionChartData = async (
     }
   })
 
+  // Calculate accumulation and filter by startDate
   let accDotacao = 0
   let accLiquidado = 0
 
-  return Array.from(monthsData.entries())
-    .sort((a, b) => a[1].sortKey - b[1].sortKey)
-    .map(([month, data]) => {
+  // Start date threshold for filtering result (start of month of reqStart)
+  const filterThreshold = new Date(
+    reqStart.getFullYear(),
+    reqStart.getMonth(),
+    1,
+  )
+
+  return Array.from(monthsData.values())
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map((data) => {
       accDotacao += data.dotacao
       accLiquidado += data.liquidado
 
       return {
-        month,
+        month: data.label,
         dotacao: accDotacao,
         liquidado: accLiquidado,
+        date: data.date,
       }
     })
+    .filter((d) => d.date >= filterThreshold)
 }
