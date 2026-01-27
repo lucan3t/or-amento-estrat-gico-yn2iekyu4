@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Card,
   CardContent,
@@ -28,8 +28,9 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Loader2 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { DEPARTMENTS } from '@/lib/constants'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export default function DepartmentAnalysis() {
   const [focusDept, setFocusDept] = useState<string>('')
@@ -42,6 +43,8 @@ export default function DepartmentAnalysis() {
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(
     null,
   )
+
+  const isMobile = useIsMobile()
 
   // Load filter options
   useEffect(() => {
@@ -84,6 +87,15 @@ export default function DepartmentAnalysis() {
     }
     loadData()
   }, [dateRange, selectedDeptFilter])
+
+  // Prepare data for the chart - Sort by Dotacao for better financial comparison
+  const chartData = useMemo(() => {
+    return [...deptData].sort((a, b) => b.dotacao - a.dotacao)
+  }, [deptData])
+
+  // Calculate dynamic height for scrollable chart
+  const chartHeight = Math.max(450, chartData.length * 60)
+  const yAxisWidth = isMobile ? 100 : 200
 
   const chartConfig = {
     dotacao: { label: 'Dotação', color: 'hsl(var(--muted-foreground))' },
@@ -146,66 +158,77 @@ export default function DepartmentAnalysis() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <Card className="h-full">
-              <CardHeader>
+            <Card className="h-full flex flex-col">
+              <CardHeader className="flex-none">
                 <CardTitle>Comparativo Financeiro</CardTitle>
                 <CardDescription>
-                  Análise de Dotação vs Liquidado por Órgão
+                  Análise de Dotação vs Liquidado por Órgão (Ordenado por Maior
+                  Orçamento)
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="h-[400px]">
-                  <ChartContainer
-                    config={chartConfig}
-                    className="h-full w-full"
-                  >
-                    <BarChart
-                      data={deptData.slice(0, 10)}
-                      margin={{ top: 20, right: 0, left: 0, bottom: 0 }}
+              <CardContent className="flex-1 min-h-[500px] p-0 relative">
+                <div className="absolute inset-0 overflow-y-auto px-6 pb-6">
+                  <div style={{ height: chartHeight }} className="w-full">
+                    <ChartContainer
+                      config={chartConfig}
+                      className="h-full w-full aspect-auto"
                     >
-                      <CartesianGrid
-                        vertical={false}
-                        strokeDasharray="3 3"
-                        strokeOpacity={0.5}
-                      />
-                      <XAxis
-                        dataKey="name"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={10}
-                        tick={{ fontSize: 10 }}
-                        interval={0}
-                      />
-                      <YAxis
-                        tickFormatter={(value) =>
-                          `R$${(value / 1000000).toFixed(0)}M`
-                        }
-                        tickLine={false}
-                        axisLine={false}
-                        width={60}
-                        tick={{ fontSize: 10 }}
-                      />
-                      <ChartTooltip
-                        cursor={false}
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value) => formatCurrency(value)}
-                          />
-                        }
-                      />
-                      <ChartLegend content={<ChartLegendContent />} />
-                      <Bar
-                        dataKey="dotacao"
-                        fill="var(--color-dotacao)"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="liquidado"
-                        fill="var(--color-liquidado)"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
+                      <BarChart
+                        accessibilityLayer
+                        data={chartData}
+                        layout="vertical"
+                        margin={{ top: 0, right: 30, left: 10, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          horizontal={false}
+                          vertical={true}
+                          strokeDasharray="3 3"
+                          strokeOpacity={0.5}
+                        />
+                        <XAxis
+                          type="number"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={10}
+                          tickFormatter={(value) =>
+                            value >= 1000000
+                              ? `R$${(value / 1000000).toFixed(0)}M`
+                              : `R$${(value / 1000).toFixed(0)}k`
+                          }
+                          tick={{ fontSize: 11 }}
+                        />
+                        <YAxis
+                          dataKey="name"
+                          type="category"
+                          tickLine={false}
+                          axisLine={false}
+                          width={yAxisWidth}
+                          tick={{ fontSize: 11 }}
+                        />
+                        <ChartTooltip
+                          cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                          content={
+                            <ChartTooltipContent
+                              formatter={(value) => formatCurrency(value)}
+                            />
+                          }
+                        />
+                        <ChartLegend content={<ChartLegendContent />} />
+                        <Bar
+                          dataKey="dotacao"
+                          fill="var(--color-dotacao)"
+                          radius={[0, 4, 4, 0]}
+                          barSize={20}
+                        />
+                        <Bar
+                          dataKey="liquidado"
+                          fill="var(--color-liquidado)"
+                          radius={[0, 4, 4, 0]}
+                          barSize={20}
+                        />
+                      </BarChart>
+                    </ChartContainer>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -216,7 +239,7 @@ export default function DepartmentAnalysis() {
               <CardHeader>
                 <CardTitle className="text-lg">Detalhes do Órgão</CardTitle>
                 <CardDescription className="text-primary-foreground/70">
-                  Selecione um órgão no gráfico ou abaixo para ver detalhes.
+                  Selecione um órgão abaixo para ver detalhes.
                 </CardDescription>
               </CardHeader>
               <CardContent>
