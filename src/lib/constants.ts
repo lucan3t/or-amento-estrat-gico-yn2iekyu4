@@ -1,47 +1,23 @@
 export const DEPARTMENTS = [
-  { id: '02000', name: '02000 - GABINETE DO PREFEITO' },
-  { id: '03000', name: '03000 - SECRETARIA MUNICIPAL DE GESTÃO PÚBLICA' },
-  { id: '04000', name: '04000 - SECRETARIA MUNICIPAL DA FAZENDA' },
-  {
-    id: '05000',
-    name: '05000 - SECRETARIA MUNICIPAL DO DESENVOLVIMENTO SOCIAL',
-  },
-  { id: '06000', name: '06000 - SECRETARIA MUNICIPAL DE EDUCAÇÃO' },
-  { id: '07000', name: '07000 - SECRETARIA MUNICIPAL DE SAÚDE' },
-  {
-    id: '08000',
-    name: '08000 - SECRETARIA MUNICIPAL DO DESENVOLVIMENTO URBANO E MEIO AMBIENTE',
-  },
-  {
-    id: '09000',
-    name: '09000 - SECRETARIA MUNICIPAL DE DESENVOLVIMENTO RURAL',
-  },
-  {
-    id: '10000',
-    name: '10000 - SECRETARIA MUNICIPAL DE CULTURA, LAZER E JUVENTUDE',
-  },
-  {
-    id: '11000',
-    name: '11000 - SECRETARIA MUNICIPAL DE DESENVOLVIMENTO ECONÔMICO E TURISMO',
-  },
-  { id: '12000', name: '12000 - SECRETARIA MUNICIPAL DE SERVIÇOS PÚBLICOS' },
-  { id: '13000', name: '13000 - SECRETARIA MUNICIPAL DE INFRAESTRUTURA' },
-  { id: '14000', name: '14000 - SECRETARIA MUNICIPAL DE DEFESA SOCIAL' },
-  {
-    id: '15000',
-    name: '15000 - SECRETARIA MUNICIPAL DE PLANEJAMENTO E ORÇAMENTO',
-  },
-  { id: '16000', name: '16000 - SECRETARIA MUNICIPAL DE ESPORTE' },
-  {
-    id: '17000',
-    name: '17000 - SECRETARIA MUNICIPAL DE POLÍTICAS PARA MULHER',
-  },
-  { id: '18000', name: '18000 - SECRETARIA MUNICIPAL DE ILUMINAÇÃO PÚBLICA' },
-  {
-    id: '20000',
-    name: '20000 - SUPERINTENDÊNCIA MUNICIPAL DE TRANSPORTES E TRÂNSITO',
-  },
-  { id: '21000', name: '21000 - INSTITUTO DE PREVIDÊNCIA' },
+  { id: 'Gabinete', name: 'Gabinete' },
+  { id: 'Gestão Pública', name: 'Gestão Pública' },
+  { id: 'Fazenda', name: 'Fazenda' },
+  { id: 'Assistência Social', name: 'Assistência Social' },
+  { id: 'Educação', name: 'Educação' },
+  { id: 'Saúde', name: 'Saúde' },
+  { id: 'Desenvolvimento Urbano', name: 'Desenvolvimento Urbano' },
+  { id: 'Desenvolvimento Rural', name: 'Desenvolvimento Rural' },
+  { id: 'Cultura e Lazer', name: 'Cultura e Lazer' },
+  { id: 'Desenvolvimento Econômico', name: 'Desenvolvimento Econômico' },
+  { id: 'Serviços Públicos', name: 'Serviços Públicos' },
+  { id: 'Infraestrutura', name: 'Infraestrutura' },
+  { id: 'Defesa Social', name: 'Defesa Social' },
+  { id: 'Planejamento', name: 'Planejamento' },
+  { id: 'Esporte', name: 'Esporte' },
+  { id: 'Políticas para Mulher', name: 'Políticas para Mulher' },
+  { id: 'Iluminação Pública', name: 'Iluminação Pública' },
+  { id: 'SMTT', name: 'SMTT' },
+  { id: 'Previdência', name: 'Previdência' },
 ]
 
 export const PROGRAMS = [

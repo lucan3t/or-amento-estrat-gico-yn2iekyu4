@@ -32,7 +32,7 @@ export const getDepartmentPerformance = () => {
 
     return {
       id: dept.id,
-      name: dept.name.split(' - ')[1], // Short name for charts
+      name: dept.name, // Simplified name is now directly in dept.name
       fullName: dept.name,
       dotacao,
       empenhado,

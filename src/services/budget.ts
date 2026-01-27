@@ -229,7 +229,8 @@ export const getDepartmentPerformanceData = async (
       const dept = DEPARTMENTS.find((d) => d.id === id)
       return {
         id,
-        name: dept ? dept.name.split(' - ')[1] : id,
+        // Used simplified name from constants if available, otherwise use id (which is now simplified name in DB)
+        name: dept ? dept.name : id,
         fullName: dept?.name || id,
         ...values,
         executionRate:

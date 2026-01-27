@@ -252,8 +252,7 @@ export default function BudgetManagement() {
                     {entries.map((entry) => (
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium text-xs md:text-sm">
-                          {getDeptName(entry.department).split(' - ')[1] ||
-                            entry.department}
+                          {getDeptName(entry.department)}
                         </TableCell>
                         <TableCell className="text-xs md:text-sm">
                           {getProgName(entry.program).split(' - ')[1] ||
