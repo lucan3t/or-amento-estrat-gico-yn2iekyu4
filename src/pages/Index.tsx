@@ -140,7 +140,7 @@ export default function Index() {
       color: '#A1E3F9',
     },
     executionRate: {
-      label: 'Liquidado vs Dotação',
+      label: 'Percentual Liquidado',
       color: '#22c55e',
     },
   }
@@ -344,7 +344,19 @@ export default function Index() {
                         />
                         <XAxis type="number" hide />
                         <ChartTooltip
-                          content={<ChartTooltipContent indicator="line" />}
+                          cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                          content={
+                            <ChartTooltipContent
+                              indicator="line"
+                              formatter={(value) =>
+                                new Intl.NumberFormat('pt-BR', {
+                                  style: 'decimal',
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                }).format(Number(value)) + '%'
+                              }
+                            />
+                          }
                         />
                         <Bar
                           dataKey="executionRate"
