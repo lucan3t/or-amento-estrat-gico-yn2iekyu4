@@ -1,6 +1,16 @@
 import { supabase } from '@/lib/supabase/client'
 import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
 import { createHistoryEntry } from './history'
+import {
+  startOfYear,
+  endOfYear,
+  differenceInDays,
+  eachDayOfInterval,
+  eachMonthOfInterval,
+  endOfDay,
+  endOfMonth,
+  format,
+} from 'date-fns'
 
 export interface BudgetEntry {
   id: string
@@ -303,9 +313,10 @@ export const getEvolutionChartData = async (
 
   // Start calculation from the beginning of the year of the requested start date
   // This ensures correct accumulation from Jan 1st
-  const calcStart = new Date(reqStart.getFullYear(), 0, 1)
+  const calcStart = startOfYear(reqStart)
 
-  // We need to fetch data up to reqEnd
+  // We need to fetch data up to reqEnd.
+  // We fetch from start of year to build the cumulative state correctly.
   const entries = await getBudgetEntries(
     calcStart,
     reqEnd,
@@ -313,90 +324,54 @@ export const getEvolutionChartData = async (
     programId,
   )
 
-  // Initialize buckets for the whole calculation period
-  const monthsData = new Map<
-    string,
-    {
-      label: string
-      dotacao: number
-      liquidado: number
-      sortKey: number
-      date: Date
-    }
-  >()
+  // Determine granularity based on the requested range
+  const daysDiff = differenceInDays(reqEnd, reqStart)
+  const isDaily = daysDiff <= 60
 
-  // Normalize iterDate to start of month
-  const iterDate = new Date(calcStart.getFullYear(), calcStart.getMonth(), 1)
-  const lastDate = new Date(reqEnd.getFullYear(), reqEnd.getMonth(), 1)
+  let periods: Date[] = []
 
-  // Create empty buckets for all months in range
-  while (iterDate <= lastDate) {
-    const key = iterDate
-      .toLocaleString('pt-BR', { month: 'short' })
-      .replace('.', '')
-    const yearSuffix =
-      reqStart.getFullYear() !== reqEnd.getFullYear()
-        ? `/${iterDate.getFullYear().toString().slice(2)}`
-        : ''
-    const fullKey = key + yearSuffix
-
-    // Store localized date to match entries
-    monthsData.set(fullKey, {
-      label: fullKey,
-      dotacao: 0,
-      liquidado: 0,
-      sortKey: iterDate.getTime(),
-      date: new Date(iterDate),
-    })
-
-    // Increment month
-    iterDate.setMonth(iterDate.getMonth() + 1)
+  if (isDaily) {
+    periods = eachDayOfInterval({ start: reqStart, end: reqEnd })
+  } else {
+    periods = eachMonthOfInterval({ start: reqStart, end: reqEnd })
   }
 
-  // Aggregate values into buckets
-  entries.forEach((entry) => {
-    const date = new Date(entry.created_at)
-    if (date >= calcStart && date <= reqEnd) {
-      const key = date
-        .toLocaleString('pt-BR', { month: 'short' })
-        .replace('.', '')
-      const yearSuffix =
-        reqStart.getFullYear() !== reqEnd.getFullYear()
-          ? `/${date.getFullYear().toString().slice(2)}`
-          : ''
-      const fullKey = key + yearSuffix
+  // Sort entries by date to allow single-pass accumulation
+  const sortedEntries = entries.sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )
 
-      if (monthsData.has(fullKey)) {
-        const current = monthsData.get(fullKey)!
-        current.dotacao += Number(entry.dotation || 0)
-        current.liquidado += Number(entry.liquidated || 0)
+  let currentDotacao = 0
+  let currentLiquidado = 0
+  let entryIndex = 0
+
+  const data = periods.map((periodDate) => {
+    const periodEnd = isDaily ? endOfDay(periodDate) : endOfMonth(periodDate)
+
+    // Process all entries up to the end of this period
+    while (entryIndex < sortedEntries.length) {
+      const entry = sortedEntries[entryIndex]
+      const entryDate = new Date(entry.created_at)
+
+      if (entryDate > periodEnd) {
+        break
       }
+
+      currentDotacao += Number(entry.dotation || 0)
+      currentLiquidado += Number(entry.liquidated || 0)
+      entryIndex++
+    }
+
+    return {
+      date: isDaily
+        ? format(periodDate, 'dd/MM')
+        : format(periodDate, 'MM/yyyy'),
+      fullDate: periodDate,
+      dotacao: currentDotacao,
+      liquidado: currentLiquidado,
     }
   })
 
-  // Calculate accumulation and filter by startDate
-  let accDotacao = 0
-  let accLiquidado = 0
-
-  // Start date threshold for filtering result (start of month of reqStart)
-  const filterThreshold = new Date(
-    reqStart.getFullYear(),
-    reqStart.getMonth(),
-    1,
-  )
-
-  return Array.from(monthsData.values())
-    .sort((a, b) => a.sortKey - b.sortKey)
-    .map((data) => {
-      accDotacao += data.dotacao
-      accLiquidado += data.liquidado
-
-      return {
-        month: data.label,
-        dotacao: accDotacao,
-        liquidado: accLiquidado,
-        date: data.date,
-      }
-    })
-    .filter((d) => d.date >= filterThreshold)
+  return data
 }

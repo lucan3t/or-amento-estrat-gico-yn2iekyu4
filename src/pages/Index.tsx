@@ -17,6 +17,7 @@ import { DEPARTMENTS, PROGRAMS } from '@/lib/constants'
 import {
   getAggregatedSummary,
   getDepartmentPerformanceData,
+  getEvolutionChartData,
   type BudgetSummary,
 } from '@/services/budget'
 import {
@@ -51,6 +52,7 @@ export default function Index() {
   const [loading, setLoading] = useState(true)
   const [summary, setSummary] = useState<BudgetSummary | null>(null)
   const [deptPerformance, setDeptPerformance] = useState<any[]>([])
+  const [evolutionData, setEvolutionData] = useState<any[]>([])
 
   // Prepare Department Options for MultiSelect
   const deptOptions = useMemo<Option[]>(
@@ -81,7 +83,7 @@ export default function Index() {
 
       try {
         setLoading(true)
-        const [sum, dept] = await Promise.all([
+        const [sum, dept, evolution] = await Promise.all([
           getAggregatedSummary(
             selectedDeptIds,
             selectedProg,
@@ -94,9 +96,16 @@ export default function Index() {
             selectedDeptIds,
             selectedProg,
           ),
+          getEvolutionChartData(
+            selectedDeptIds,
+            selectedProg,
+            dateRange.start,
+            dateRange.end,
+          ),
         ])
         setSummary(sum)
         setDeptPerformance(dept)
+        setEvolutionData(evolution)
       } catch (error) {
         console.error('Failed to fetch dashboard data', error)
       } finally {
@@ -187,16 +196,6 @@ export default function Index() {
     return [...deptPerformance]
       .sort((a, b) => b.executionRate - a.executionRate)
       .slice(0, 10)
-  }, [deptPerformance])
-
-  // Data for "Dotação Atualizada vs Realizado" (Descending Dotacao)
-  const paretoData = useMemo(() => {
-    return [...deptPerformance]
-      .sort((a, b) => b.dotacao - a.dotacao)
-      .map((d) => ({
-        ...d,
-        name: d.name || '(Vazio)',
-      }))
   }, [deptPerformance])
 
   return (
@@ -365,24 +364,22 @@ export default function Index() {
               </CardContent>
             </Card>
 
-            {/* Block 3 - Dotação vs Realizado (New Chart) */}
+            {/* Block 3 - Dotação vs Realizado (Temporal Evolution) */}
             <Card className="col-span-1 shadow-sm">
               <CardHeader>
                 <CardTitle>Dotação Atualizada vs Realizado</CardTitle>
-                <CardDescription>
-                  Comparativo por área (Ordenado por maior orçamento)
-                </CardDescription>
+                <CardDescription>Comparativo por período</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[400px]">
-                  {paretoData.length > 0 ? (
+                  {evolutionData.length > 0 ? (
                     <ChartContainer
                       config={chartConfig}
                       className="h-full w-full"
                     >
                       <ComposedChart
-                        data={paretoData}
-                        margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
+                        data={evolutionData}
+                        margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
                       >
                         <CartesianGrid
                           vertical={false}
@@ -390,12 +387,12 @@ export default function Index() {
                           strokeOpacity={0.5}
                         />
                         <XAxis
-                          dataKey="name"
-                          angle={-45}
-                          textAnchor="end"
-                          height={80}
-                          tick={{ fontSize: 10 }}
-                          interval={0}
+                          dataKey="date"
+                          height={40}
+                          tick={{ fontSize: 11 }}
+                          tickMargin={10}
+                          axisLine={false}
+                          tickLine={false}
                         />
                         <YAxis
                           tickFormatter={(value) => {
@@ -415,6 +412,10 @@ export default function Index() {
                         />
                         <ChartTooltip
                           cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                          // Sorting logic via itemSorter to ensure Dotação appears before Liquidado
+                          itemSorter={(item) =>
+                            item.name === 'Dotação' ? -1 : 1
+                          }
                           content={
                             <ChartTooltipContent
                               indicator="dot"
