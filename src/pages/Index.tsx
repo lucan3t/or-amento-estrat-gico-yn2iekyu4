@@ -270,7 +270,7 @@ export default function Index() {
                 className={cn(
                   'transition-all duration-200 hover:shadow-md hover:-translate-y-1',
                   card.isMain
-                    ? 'bg-primary text-primary-foreground border-primary'
+                    ? 'bg-blue-50 text-blue-900 border-blue-200 shadow-sm'
                     : '',
                 )}
               >

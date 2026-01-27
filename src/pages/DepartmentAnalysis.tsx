@@ -235,10 +235,12 @@ export default function DepartmentAnalysis() {
           </div>
 
           <div className="lg:col-span-1 space-y-4">
-            <Card className="bg-primary text-primary-foreground border-none">
+            <Card className="bg-blue-50 text-blue-900 border-blue-200 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg">Detalhes do Órgão</CardTitle>
-                <CardDescription className="text-primary-foreground/70">
+                <CardTitle className="text-lg text-blue-900">
+                  Detalhes do Órgão
+                </CardTitle>
+                <CardDescription className="text-blue-700">
                   Selecione um órgão abaixo para ver detalhes.
                 </CardDescription>
               </CardHeader>
@@ -247,7 +249,7 @@ export default function DepartmentAnalysis() {
                   value={focusDept || deptData[0]?.id}
                   onValueChange={setFocusDept}
                 >
-                  <SelectTrigger className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground">
+                  <SelectTrigger className="bg-white border-blue-200 text-blue-900 focus:ring-blue-200">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
